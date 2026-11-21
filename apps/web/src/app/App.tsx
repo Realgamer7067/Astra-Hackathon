@@ -1,7 +1,6 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import TimelineControls from "../timeline/TimelineControls";
-import { syntheticFrames, syntheticImpact } from "../timeline/syntheticFrames";
-import { useReplay } from "../timeline/useReplay";
+import { useReplaySession } from "./useReplaySession";
 import {
   type DemoBundle,
   kindColors,
@@ -14,26 +13,9 @@ const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
-const NO_FRAMES: ReturnType<typeof syntheticFrames> = [];
-
 export function App() {
   const [previewing, setPreviewing] = useState(false);
-  const synthetic = useMemo(() => syntheticFrames(), []);
-  const replay = useReplay(previewing ? synthetic : NO_FRAMES);
-  const [focusToken, setFocusToken] = useState(0);
   const [lowGraphics, setLowGraphics] = useState(false);
-  const impactSite = useMemo(() => syntheticImpact(synthetic), [synthetic]);
-  const impact =
-    previewing && impactSite
-      ? {
-          position: impactSite.position,
-          seed: 20260101,
-          ageMs:
-            replay.clock.timeMs >= impactSite.timeMs
-              ? replay.clock.timeMs - impactSite.timeMs
-              : null,
-        }
-      : undefined;
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -42,6 +24,8 @@ export function App() {
   const selectedState = demo?.states.states.find(
     (sample) => sample.object_id === selectedId,
   );
+
+  const session = useReplaySession(state.status, demo, previewing);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,9 +71,11 @@ export function App() {
               states={demo?.states.states}
               objects={demo?.objects}
               selectedId={selectedId}
-              replayPositions={previewing ? replay.positions : undefined}
-              impact={impact}
-              focusToken={focusToken}
+              replayPositions={
+                session.replayable ? session.replay.positions : undefined
+              }
+              impact={session.impact}
+              focusToken={session.focusToken}
               lowGraphics={lowGraphics}
             />
           </Suspense>
@@ -106,16 +92,48 @@ export function App() {
               />
               Synthetic replay preview
             </label>
-            {previewing && (
+            {previewing ? (
+              <p className="synthetic-badge" role="note">
+                SYNTHETIC DEMO: illustrative motion, not a simulation result
+              </p>
+            ) : session.framesState.status === "loading" ? (
+              <p className="effect-note" role="status">
+                Loading replay frames…
+              </p>
+            ) : session.framesState.status === "error" ? (
+              <div className="failure">
+                <p role="alert">
+                  Replay frames unavailable. {session.framesState.message}
+                </p>
+                <button onClick={retry}>Retry</button>
+              </div>
+            ) : session.framesState.status === "empty" ? (
+              <p className="effect-note" role="status">
+                No replay frames in this run
+                {session.provenance ? ` (${session.provenance.kind})` : ""}.
+                Nothing to replay yet.
+              </p>
+            ) : (
+              <p className="synthetic-badge" role="note">
+                Replay frames: {session.provenance?.kind} ·{" "}
+                {session.provenance?.mode}
+                {session.provenance?.kind === "HYPOTHETICAL_SIMULATION"
+                  ? " · HYPOTHETICAL SCENARIO, NOT A PREDICTION"
+                  : ""}
+              </p>
+            )}
+            {session.replayable && (
               <>
-                <p className="synthetic-badge" role="note">
-                  SYNTHETIC DEMO: illustrative motion, not a simulation result
-                </p>
-                <p className="effect-note">
-                  Impact flash is a decorative effect, not simulated debris.
-                </p>
+                {previewing && (
+                  <p className="effect-note">
+                    Impact flash is a decorative effect, not simulated debris.
+                  </p>
+                )}
                 <div className="timeline-buttons">
-                  <button onClick={() => setFocusToken((n) => n + 1)}>
+                  <button
+                    onClick={session.focusImpact}
+                    disabled={!session.hasImpact}
+                  >
                     Fly to impact
                   </button>
                   <label className="preview-toggle">
@@ -127,7 +145,10 @@ export function App() {
                     Low graphics
                   </label>
                 </div>
-                <TimelineControls replay={replay} label="synthetic" />
+                <TimelineControls
+                  replay={session.replay}
+                  label={previewing ? "synthetic" : session.provenance?.kind}
+                />
               </>
             )}
           </div>

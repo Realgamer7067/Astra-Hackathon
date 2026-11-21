@@ -36,6 +36,8 @@ type Props = {
   lowGraphics?: boolean;
 };
 
+import { renderScale, trackFps } from "./quality";
+
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -56,6 +58,7 @@ export default function EarthView({
   focusToken,
   lowGraphics = false,
 }: Props) {
+  const fpsLabel = useRef<HTMLSpanElement>(null);
   const burstCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
@@ -75,6 +78,9 @@ export default function EarthView({
         skyBox: false,
         scene3DOnly: true,
         requestRenderMode: true,
+        // Render at device resolution (capped) instead of CSS pixels so the
+        // globe and markers are crisp on high-DPI displays.
+        useBrowserRecommendedResolution: false,
         showRenderLoopErrors: false,
       });
     } catch {
@@ -82,6 +88,9 @@ export default function EarthView({
       return;
     }
     widget.current = instance;
+    instance.resolutionScale = renderScale(false);
+    instance.scene.postProcessStages.fxaa.enabled = true;
+    const stopFps = trackFps(instance, fpsLabel.current);
     instance.scene.backgroundColor = Color.fromCssColorString("#090f17");
     if (instance.scene.globe)
       instance.scene.globe.baseColor = Color.fromCssColorString("#22455e");
@@ -113,6 +122,7 @@ export default function EarthView({
           setWarning("Local imagery unavailable. Showing the Earth ellipsoid.");
       });
     return () => {
+      stopFps();
       removeError();
       points.current = null;
       replayCollection.current = null;
@@ -191,6 +201,15 @@ export default function EarthView({
     widget.current?.scene.requestRender();
   }, [replayPositions]);
 
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance) return;
+    instance.resolutionScale = renderScale(lowGraphics);
+    // FXAA already smooths edges; MSAA on top is redundant cost on low graphics.
+    instance.scene.msaaSamples = lowGraphics ? 1 : 4;
+    instance.scene.requestRender();
+  }, [lowGraphics]);
+
   // Decorative burst: independent of physics; off under reduced motion.
   useEffect(() => {
     const collection = burstCollection.current;
@@ -260,6 +279,14 @@ export default function EarthView({
           {warning}
         </p>
       )}
+      <span
+        ref={fpsLabel}
+        className="fps-counter"
+        role="status"
+        aria-label="Rendering frame rate"
+      >
+        FPS idle
+      </span>
       {available && (
         <div
           className="camera-controls"

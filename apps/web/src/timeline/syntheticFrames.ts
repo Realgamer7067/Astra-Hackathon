@@ -60,19 +60,3 @@ export function syntheticFrames(
   }
   return samples;
 }
-
-/** First-fragment time and centroid for the synthetic fixture (SYNTHETIC_DEMO). */
-export function syntheticImpact(
-  samples: readonly FrameSample[],
-): { timeMs: number; position: [number, number, number] } | null {
-  const hit = samples.find((s) => s.positions.length > 2);
-  if (!hit) return null;
-  const sum: [number, number, number] = [0, 0, 0];
-  for (const p of hit.positions)
-    for (let i = 0; i < 3; i++) sum[i]! += p.position[i]!;
-  const n = hit.positions.length;
-  return {
-    timeMs: Date.parse(hit.at_utc),
-    position: [sum[0] / n, sum[1] / n, sum[2] / n],
-  };
-}

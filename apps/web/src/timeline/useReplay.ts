@@ -43,11 +43,17 @@ export function useReplay(samples: readonly FrameSample[]): Replay {
   useEffect(() => {
     if (!playing) return;
     let frame = 0;
+    let pending = 0;
     last.current = performance.now();
     const step = (now: number) => {
-      const delta = Math.min(now - last.current, 100);
+      pending += Math.min(now - last.current, 100);
       last.current = now;
-      setClock((current) => tick(current, delta));
+      // Throttle React updates to ~30 Hz; accumulated time keeps replay exact.
+      if (pending >= 33) {
+        const delta = pending;
+        pending = 0;
+        setClock((current) => tick(current, delta));
+      }
       frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
