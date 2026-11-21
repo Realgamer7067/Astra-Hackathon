@@ -167,6 +167,29 @@
         "title": "CatalogObject",
         "type": "object"
       },
+      "CatalogRefreshResult": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "refreshed": {
+            "title": "Refreshed",
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CatalogStatus"
+          }
+        },
+        "required": [
+          "status",
+          "refreshed",
+          "message"
+        ],
+        "title": "CatalogRefreshResult",
+        "type": "object"
+      },
       "CatalogStatus": {
         "additionalProperties": false,
         "properties": {
@@ -591,6 +614,19 @@
         "title": "FrameSample",
         "type": "object"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "Health": {
         "additionalProperties": false,
         "properties": {
@@ -739,6 +775,119 @@
           "message"
         ],
         "title": "JobFailure",
+        "type": "object"
+      },
+      "ObjectDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at_utc": {
+            "format": "date-time",
+            "title": "Generated At Utc",
+            "type": "string"
+          },
+          "is_stale": {
+            "title": "Is Stale",
+            "type": "boolean"
+          },
+          "object": {
+            "$ref": "#/components/schemas/CatalogObject"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "satcat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SatcatMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "staleness_hours": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staleness Hours"
+          }
+        },
+        "required": [
+          "generated_at_utc",
+          "object",
+          "is_stale",
+          "provenance"
+        ],
+        "title": "ObjectDetail",
+        "type": "object"
+      },
+      "ObjectSearchPage": {
+        "additionalProperties": false,
+        "properties": {
+          "catalog_snapshot_id": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Catalog Snapshot Id",
+            "type": "string"
+          },
+          "generated_at_utc": {
+            "format": "date-time",
+            "title": "Generated At Utc",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogObject"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at_utc",
+          "items",
+          "next_cursor",
+          "total",
+          "catalog_snapshot_id",
+          "provenance"
+        ],
+        "title": "ObjectSearchPage",
         "type": "object"
       },
       "OccupancyBin": {
@@ -1012,6 +1161,91 @@
         "title": "RenderStates",
         "type": "object"
       },
+      "SatcatMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "decay_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decay Date"
+          },
+          "launch_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launch Date"
+          },
+          "norad_cat_id": {
+            "title": "Norad Cat Id",
+            "type": "string"
+          },
+          "note": {
+            "default": "RCS is radar cross-section, not a measured physical radius or mass.",
+            "title": "Note",
+            "type": "string"
+          },
+          "object_type_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Type Raw"
+          },
+          "operational_status_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operational Status Code"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "rcs_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rcs M2"
+          }
+        },
+        "required": [
+          "norad_cat_id"
+        ],
+        "title": "SatcatMetadata",
+        "type": "object"
+      },
       "ScenarioRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1203,6 +1437,46 @@
         },
         "title": "SimulationSettings",
         "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
       }
     }
   },
@@ -1212,6 +1486,68 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/catalog/refresh": {
+      "post": {
+        "operationId": "refreshCatalog",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRefreshResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Catalog Refresh",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/catalog/status": {
+      "get": {
+        "operationId": "getCatalogStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Catalog Status",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/demo": {
       "get": {
         "operationId": "getDemo",
@@ -1238,6 +1574,305 @@
           }
         },
         "summary": "Demo"
+      }
+    },
+    "/api/v1/objects": {
+      "get": {
+        "operationId": "searchObjects",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "PAYLOAD",
+                    "ROCKET_BODY",
+                    "DEBRIS",
+                    "UNKNOWN"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "operational_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ACTIVE",
+                    "INACTIVE",
+                    "UNKNOWN"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operational Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectSearchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Search Objects",
+        "tags": [
+          "objects"
+        ]
+      }
+    },
+    "/api/v1/objects/{object_id}": {
+      "get": {
+        "operationId": "getObjectDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "title": "Object Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Object Detail",
+        "tags": [
+          "objects"
+        ]
+      }
+    },
+    "/api/v1/states": {
+      "get": {
+        "operationId": "getRenderStates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "At"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "visible",
+              "enum": [
+                "visible",
+                "selected",
+                "preset"
+              ],
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ids"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderStates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Get Render States",
+        "tags": [
+          "objects"
+        ]
       }
     },
     "/health": {

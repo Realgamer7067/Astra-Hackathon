@@ -1,6 +1,6 @@
 # TASK-003: Hypothetical collision runner and physical fragments
 
-- **Owner:** unclaimed
+- **Owner:** Realgamer7067
 - **Dependencies:** TASK-001
 - **PR:** none
 - **Target demo behavior:** Satellite–satellite and satellite–debris forced events run end to end; assumptions and original/modified states retained; seeded conservation-tested debris and paginated replay; bounded/cancellable jobs.

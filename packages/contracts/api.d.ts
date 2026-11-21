@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/catalog/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Catalog Refresh */
+        post: operations["refreshCatalog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog Status */
+        get: operations["getCatalogStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo": {
         parameters: {
             query?: never;
@@ -13,6 +47,57 @@ export interface paths {
         };
         /** Demo */
         get: operations["getDemo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Objects */
+        get: operations["searchObjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/objects/{object_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Object Detail */
+        get: operations["getObjectDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Render States */
+        get: operations["getRenderStates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -94,6 +179,14 @@ export interface components {
              * @enum {string}
              */
             state_source: "CELESTRAK_GP" | "SYNTHETIC_DEMO";
+        };
+        /** CatalogRefreshResult */
+        CatalogRefreshResult: {
+            /** Message */
+            message: string;
+            /** Refreshed */
+            refreshed: boolean;
+            status: components["schemas"]["CatalogStatus"];
         };
         /** CatalogStatus */
         CatalogStatus: {
@@ -255,6 +348,11 @@ export interface components {
             /** Positions */
             positions: components["schemas"]["FramePosition"][];
         };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /** Health */
         Health: {
             /** Cache Ready */
@@ -316,6 +414,50 @@ export interface components {
             code: string;
             /** Message */
             message: string;
+        };
+        /** ObjectDetail */
+        ObjectDetail: {
+            /**
+             * Generated At Utc
+             * Format: date-time
+             */
+            generated_at_utc: string;
+            /** Is Stale */
+            is_stale: boolean;
+            object: components["schemas"]["CatalogObject"];
+            provenance: components["schemas"]["Provenance"];
+            satcat?: components["schemas"]["SatcatMetadata"] | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Staleness Hours */
+            staleness_hours?: number | null;
+        };
+        /** ObjectSearchPage */
+        ObjectSearchPage: {
+            /** Catalog Snapshot Id */
+            catalog_snapshot_id: string;
+            /**
+             * Generated At Utc
+             * Format: date-time
+             */
+            generated_at_utc: string;
+            /** Items */
+            items: components["schemas"]["CatalogObject"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+            provenance: components["schemas"]["Provenance"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Total */
+            total: number;
         };
         /** OccupancyBin */
         OccupancyBin: {
@@ -412,6 +554,28 @@ export interface components {
              */
             velocity_unit: "m/s";
         };
+        /** SatcatMetadata */
+        SatcatMetadata: {
+            /** Decay Date */
+            decay_date?: string | null;
+            /** Launch Date */
+            launch_date?: string | null;
+            /** Norad Cat Id */
+            norad_cat_id: string;
+            /**
+             * Note
+             * @default RCS is radar cross-section, not a measured physical radius or mass.
+             */
+            note: string;
+            /** Object Type Raw */
+            object_type_raw?: string | null;
+            /** Operational Status Code */
+            operational_status_code?: string | null;
+            /** Owner */
+            owner?: string | null;
+            /** Rcs M2 */
+            rcs_m2?: number | null;
+        };
         /** ScenarioRequest */
         ScenarioRequest: {
             /**
@@ -495,6 +659,19 @@ export interface components {
              */
             seed: number;
         };
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -504,6 +681,64 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    refreshCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogRefreshResult"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getCatalogStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogStatus"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getDemo: {
         parameters: {
             query?: never;
@@ -520,6 +755,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DemoBundle"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchObjects: {
+        parameters: {
+            query?: {
+                query?: string | null;
+                kind?: ("PAYLOAD" | "ROCKET_BODY" | "DEBRIS" | "UNKNOWN") | null;
+                operational_status?: ("ACTIVE" | "INACTIVE" | "UNKNOWN") | null;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectSearchPage"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getObjectDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                object_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjectDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getRenderStates: {
+        parameters: {
+            query?: {
+                at?: string | null;
+                scope?: "visible" | "selected" | "preset";
+                ids?: string[] | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenderStates"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Service Unavailable */

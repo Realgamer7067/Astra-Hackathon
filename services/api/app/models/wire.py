@@ -273,3 +273,40 @@ class DemoBundle(WireModel):
         ):
             raise ValueError("demo scenario identifiers do not match")
         return self
+
+
+class SatcatMetadata(WireModel):
+    norad_cat_id: str
+    object_type_raw: str | None = None
+    operational_status_code: str | None = None
+    launch_date: str | None = None
+    decay_date: str | None = None
+    rcs_m2: float | None = None
+    owner: str | None = None
+    note: str = "RCS is radar cross-section, not a measured physical radius or mass."
+
+
+class ObjectSearchPage(WireModel):
+    schema_version: Literal["1.0"] = "1.0"
+    generated_at_utc: Epoch
+    items: list[CatalogObject]
+    next_cursor: str | None
+    total: Annotated[int, Field(ge=0)]
+    catalog_snapshot_id: SnapshotId
+    provenance: Provenance
+
+
+class ObjectDetail(WireModel):
+    schema_version: Literal["1.0"] = "1.0"
+    generated_at_utc: Epoch
+    object: CatalogObject
+    satcat: SatcatMetadata | None = None
+    staleness_hours: Annotated[float, Field(ge=0)] | None = None
+    is_stale: bool
+    provenance: Provenance
+
+
+class CatalogRefreshResult(WireModel):
+    status: CatalogStatus
+    refreshed: bool
+    message: str

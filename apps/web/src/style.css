@@ -223,6 +223,118 @@ footer {
   color: var(--muted);
   font-size: 12px;
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.catalog-source-bar {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #101a26;
+  font-size: 12px;
+}
+.catalog-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mode-pill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font: 11px var(--mono);
+  font-weight: 600;
+}
+.mode-live {
+  background: #14383b;
+  color: #79e3dc;
+}
+.mode-cached {
+  background: #2f2a1a;
+  color: #efc487;
+}
+.mode-demo {
+  background: #2b2218;
+  color: #f3c17d;
+}
+.source-age,
+.source-meta {
+  color: var(--muted);
+  margin: 6px 0 0;
+  font-size: 11px;
+}
+.warning-list {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: #efc487;
+  font-size: 11px;
+}
+.refresh-row {
+  margin-top: 8px;
+}
+.refresh-button,
+.load-more-button {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #142231;
+  font-size: 12px;
+}
+.refresh-button:disabled,
+.load-more-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.refresh-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.catalog-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.catalog-search-input,
+.filter-row select {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #0d151f;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.object-name-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.object-id-sub {
+  color: var(--muted);
+  font: 11px var(--mono);
+}
+.load-more-button {
+  margin-top: 8px;
+}
+.empty-state {
+  color: var(--muted);
+  font-size: 12px;
+}
 
 @media (max-width: 700px) {
   .masthead {
