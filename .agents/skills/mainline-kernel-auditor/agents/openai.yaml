@@ -1,0 +1,15 @@
+interface:
+  display_name: Mainline Kernel Auditor
+  short_description: Evidence-based, review-only Linux kernel audits
+  default_prompt: Use $mainline-kernel-auditor to audit my kernel changes without
+    editing source; pin the scope, verify hardware and Linux contracts, and report
+    findings, evidence gaps, and coverage.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true

@@ -17,3 +17,7 @@ Read `AGENTS.md`, `docs/QUALITY.md`, `docs/WORKFLOW.md`, `docs/REVIEW_POLICY.md`
 
 Use `prompts/REVIEW_ALL_PRS.md` for the full review invocation.
 
+
+## ASTRA project context
+
+Review ASTRA frame/time/unit integrity, conservation, deterministic replay, source mode and provenance, bounded compute and near-miss versus contact labels. Use docs/PLAN.md Review focus and docs/QUALITY.md; do not infer performance from targets.

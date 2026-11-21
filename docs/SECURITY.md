@@ -10,3 +10,7 @@
 - For new code: validate input, use parameterized queries, apply least privilege, check dependencies and error paths, review auth and file upload handling.
 - Hackathon judging rules take precedence over convenience; verify attribution and whether generated assets/coding agents must be disclosed.
 
+
+## ASTRA-specific controls
+
+Allowlist official provider hosts; never accept arbitrary upstream URLs. Validate asteroid IDs and time windows. No browser-to-JPL proxy without fixed validated routes. Enforce request, simulation, page, worker and timeout caps in CONTRACTS.md. Restrict CORS to configured origins; keep provider credentials optional and server-side. Do not publicly expose unlimited compute. Cache with provenance and obey provider backoff/refresh policy. Catalog metadata and submitted assumptions are untrusted input.

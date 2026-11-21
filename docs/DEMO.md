@@ -1,32 +1,25 @@
-# 24-hour hackathon execution and demo
+# ASTRA execution and demo
 
-| Time window | Priority | Exit criteria |
-|---|---|---|
-| 0–1.5h | Read challenge, compare concepts, approve MVP + architecture | Decision recorded; demo story identified |
-| 1.5–3h | Contracts, repo, CI, ready feature cards | First end-to-end skeleton deploys |
-| 3–10h | Parallel full-feature implementation | PRs open early; small vertical slices integrate |
-| 10–16h | Integrate, test workflows, repair conflicts | All critical flows work and deploy |
-| 16–20h | Polish, accessibility, content, performance | Mobile/desktop demo reliable; no major defects |
-| 20–24h | Feature freeze, rehearse, backup and submit | Judging package complete and reproducible |
+See [PLAN.md](PLAN.md) for the four-person schedule and gates. Freeze new features at hour 20, earlier if core integration slips.
 
-This is a guide, not a rigid minute-by-minute schedule. If integration is delayed, freeze feature work earlier.
+## 60–90 second demo
 
-## Demo narrative (fill at kickoff)
+1. 0–15s: Open globe; state LIVE/CACHED/DEMO honestly, show timestamp/count and select two objects.
+2. 15–30s: Review assumed mass/radius and fictional contact modification; run seeded preset.
+3. 30–50s: Focus impact; distinguish decorative flash from numerical fragment trajectories. Accelerate, pause and rewind.
+4. 50–70s: Show shell occupancy and screened-neighbor minimum distances; ground track is projection, not danger zone.
+5. 70–90s: Show seed/snapshot/model assumptions, export report and explain limitations.
 
-1. **Hook:** Who experiences the problem and why does it matter?
-2. **Before:** Show the current pain or lost time.
-3. **After:** Demonstrate one effortless, visually clear user journey.
-4. **Differentiator:** Explain what makes the approach original, useful or technically strong.
-5. **Proof:** Show robust validation, key performance or user impact, and brief architecture.
-6. **Closing:** What was achieved in 24 hours and what comes next?
+## Backup and freeze gate
 
-## Final submission checklist
+Use committed synthetic fixtures and saved deterministic results clearly labeled DEMO, plus a recorded walkthrough. Never require network or a paid credential. Disable unavailable JPL mode with explanation. One person runs main flow, another rehearses backup on a second machine.
 
-- [ ] Deployed demo URL and working local fallback
-- [ ] Final README: concept, setup, technology, architecture, tests
-- [ ] Demo data ready; no dependency on unstable private resources
-- [ ] 2–3 minute walkthrough rehearsed and recorded as backup
-- [ ] Required licenses, attribution and AI-usage disclosure handled according to official rules
-- [ ] At least one full browser walkthrough on a second machine
-- [ ] Judges' exact scoring rubric checked line by line
+- [ ] Offline full flow and failure states checked.
+- [ ] Clean install and startup commands actually tested.
+- [ ] Scientific tests, build, lint/typecheck and security checks recorded.
+- [ ] Browser checks at 1366×768 and 390×844, keyboard and reduced motion.
+- [ ] Actual FPS, marker count, runtime, hardware/browser and snapshot ages recorded.
+- [ ] Source attribution, official rules/rubric, AI disclosures and submission format verified.
+- [ ] README and implemented/pending list match final code.
 
+No demo, deployment, screenshot or benchmark exists at planning time.

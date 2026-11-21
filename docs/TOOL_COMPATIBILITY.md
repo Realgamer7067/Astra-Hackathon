@@ -18,7 +18,9 @@ Some clients may load both root `AGENTS.md` and `GEMINI.md`: the latter contains
 
 ## Skills
 
-Install team skills under `.agents/skills/<name>/SKILL.md` and commit them when ready. Keep personal skills in the ignored tool-specific directories. A teammate whose client does not discover a shared skill can point it directly to the committed file.
+The repository includes 89 distinct installed skill snapshots under `.agents/skills/<name>/SKILL.md`, with supporting resources and available licenses. See the [catalog](../.agents/skills/README.md) and [manifest](../.agents/skills/manifest.json). Identical installations are deduplicated; differing versions are retained with a source prefix. This snapshot covers local shared, Codex (including system skills), and Claude (including synced skill bundles) directories; plugin caches and personal settings are not exported.
+
+A teammate whose client does not discover the shared directory can explicitly point it to a catalog entry’s committed SKILL.md. No global installation or absolute symlink is required to read a skill. Tool-specific scripts or connected services may still need separate setup; copied instructions do not provide credentials or tools. Keep personal settings and later personal installs local.
 
 ## Remote agent requirements
 

@@ -1,3 +1,19 @@
+# ASTRA Orbital Collision Lab
+
+Explore source-backed orbital estimates, construct explicitly hypothetical collisions, replay simulated debris and inspect bounded orbital exposure.
+
+**Status: planning complete; application not implemented.** No app startup, scientific validation, UI or performance claim is available yet.
+
+Start with [four-person execution plan](docs/PLAN.md), [project brief](docs/PROJECT_BRIEF.md), [architecture](docs/ARCHITECTURE.md), [contracts](docs/CONTRACTS.md), and the [task board](tasks/README.md). The full supplied [master specification](docs/ASTRA_MASTER_PROMPT.md) is preserved; specialized details live in [physics](docs/PHYSICS.md), [data sources](docs/DATA_SOURCES.md), [UX](docs/UX.md), and [limitations](docs/LIMITATIONS.md).
+
+First deliverable is TASK-001: runnable token-free globe, API, typed fixtures and real project checks. Four lanes then deliver catalog explorer, collision runner, globe/replay and exposure/reporting. You + main agent take collision runner (TASK-003), foundation and coordination; catalog explorer is proposed for Teammate 2. Names and merged claims remain pending. See [demo and freeze](docs/DEMO.md).
+
+Educational research simulation. Catalog positions are estimates; collision scenarios and impact trajectories are hypothetical unless explicitly stated otherwise. Not for spacecraft operations or emergency decisions.
+
+## Starter tooling and collaboration reference
+
+The following describes the inherited starter workflow. ASTRA’s selected concept and baseline stack are recorded above; instructions about choosing them at kickoff apply to future reuse of the starter.
+
 # Four-person hackathon starter
 
 For the 24-hour space hackathon on November 21–22. The team chooses the problem and stack at kickoff and builds the submission from scratch. Libraries can be selected then.
@@ -47,4 +63,4 @@ After choosing a stack, create `project-checks.json` from [project-checks.exampl
 
 ## Shared skills
 
-Add your chosen team skills to `.agents/skills/` and commit them when ready. Personal tool-specific installations stay local. See the [skills guide](docs/TOOL_COMPATIBILITY.md#skills).
+The installed Codex, Claude and shared skills are now bundled in [.agents/skills/README.md](.agents/skills/README.md): 89 distinct bundles, with identical installations deduplicated and differing versions retained. Personal tool settings, credentials and sessions stay local. See the [skills guide](docs/TOOL_COMPATIBILITY.md#skills).

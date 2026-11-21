@@ -28,3 +28,7 @@ You are the **single main agent**: both project coordinator and implementation a
 
 If the human has not approved Phase 1, remain in Phase 1.
 
+
+## ASTRA project context
+
+The user supplied the ASTRA concept and requested the execution plan. Use docs/PROJECT_BRIEF.md and docs/PLAN.md as the prepared baseline; do not restart concept selection. Confirm remaining official rules and unresolved interfaces. Follow existing claim/review gates before significant implementation.
