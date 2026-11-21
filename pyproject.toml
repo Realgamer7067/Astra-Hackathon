@@ -3,9 +3,10 @@ name = "astra-orbital-collision-lab"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "astropy>=8.0.3",
+    "astropy>=8.0.3,<9",
     "fastapi>=0.165,<0.166",
     "httpx>=0.28.1",
+    "numpy>=2,<3",
     "pydantic>=2.14,<3",
     "sgp4>=2.27",
     "uvicorn>=0.54,<0.55",

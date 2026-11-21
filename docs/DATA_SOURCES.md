@@ -49,3 +49,22 @@ Ship a small deterministic **synthetic** fixture catalog (e.g., 12–100 physica
 - NASA orbital debris technical reference (NASA OTPS 2024, includes Standard Breakup Model discussion): https://www.nasa.gov/wp-content/uploads/2024/05/2024-otps-cba-of-orbital-debris-phase-2-plus-svgs-v3-tjc-tagged.pdf
 
 Treat the above as starting points and verify their current APIs before coding. Implement the application.
+
+### Offline Earth imagery
+
+The globe uses the July 2004 global Blue Marble Next Generation composite with
+topography and bathymetry, credited to NASA Earth Observatory. Its geographic
+tile pyramid contains 170 WebP tiles at 512 × 512 pixels and about 3.2 MB in total.
+Cesium loads only the tiles needed for the current view. The highest level covers
+8,192 × 4,096 pixels globally. The existing Natural Earth II image remains the
+local fallback. The Earth surface stays a WGS84 ellipsoid with shaded imagery.
+[Source and credits](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/)
+
+To regenerate the asset set, use the 21,600 × 10,800 global JPEG for July at the
+source above. Its SHA-256 is
+`d225f1f35a6448a4d1d8f6de6e48f3433e470085b70a35800e64f384f269a7b0`.
+Downsample the map to 8,192 × 4,096 with Lanczos filtering, and generate levels 0
+through 3 at 1,024, 2,048, 4,096 and 8,192 pixels wide. Split each level into
+512-pixel square tiles, encode with WebP quality 83, and write the tiles to
+`apps/web/public/blue-marble/{z}/{x}/{y}.webp`. Tile coordinates start at the
+northwest corner and increase east and south.

@@ -17,6 +17,7 @@ import {
   modeBadgeLabel,
 } from "../features/catalog/catalogApi";
 import { ResultsPanel } from "../features/results";
+import { ScenarioLab } from "../features/scenarios/ScenarioLab";
 import "../features/results/results.css";
 import { type DemoBundle, loadDemo, utcLabel } from "./demo";
 import {
@@ -120,6 +121,11 @@ export function App(
           ASTRA
         </div>
         <span className="product-name">Orbital Collision Lab</span>
+        {demo && !props.renderScenarioPanel && (
+          <a className="scenario-jump" href="#collision-lab">
+            Collision lab
+          </a>
+        )}
         <span className="source-status" role="status">
           {catalogStatus
             ? modeBadgeLabel(catalogStatus.mode)
@@ -166,7 +172,6 @@ export function App(
               onLowGraphicsChange={setLowGraphics}
               onRetry={retry}
             />
-            <small className="credit">Natural Earth</small>
           </section>
           <CatalogExplorer
             selectedId={selectedId}
@@ -179,7 +184,9 @@ export function App(
             />
           </CatalogExplorer>
         </main>
-        {props.renderScenarioPanel?.(session.onScenarioCompleted)}
+        {props.renderScenarioPanel
+          ? props.renderScenarioPanel(session.onScenarioCompleted)
+          : demo && <ScenarioLab demo={demo} />}
       </ReplayHandoffContext.Provider>
       <footer>
         Educational research simulation. Catalog positions are estimates;

@@ -4,6 +4,10 @@
 
 TASK-001 implements `GET /health` and `GET /api/v1/demo`. Other endpoint descriptions below are contracts for the owning lanes to implement. The [Pydantic models](../services/api/app/models/wire.py) define the foundation wire fields. [OpenAPI](../packages/contracts/openapi.json) and [TypeScript](../packages/contracts/api.d.ts) are generated from those models. Lane owners coordinate changes before modifying these shared shapes.
 
+The collision runner adds `POST /api/v1/scenarios`, `POST /api/v1/scenarios/{id}/run`, `GET /api/v1/jobs/{id}`, `POST /api/v1/jobs/{id}/cancel`, and `GET /api/v1/scenarios/{id}/frames`. `GET /api/v1/scenarios/{id}/simulation` supplies the raw physics summary and forced-contact audit. The results and report routes read the completed worker summary. Computed frames and reports carry `HYPOTHETICAL_SIMULATION` evidence and `DEMO` source mode for fixture-driven runs. Creation uses `application/json` and accepts the fixed synthetic epoch. Trajectories and conditional entry crossings are available products. Errors use the shared envelope.
+
+The local worker retains up to 10 scenarios per process, including up to two active jobs. The sample budget is one million fragment positions per scenario. A frame cursor is valid for the same time window and sample step. Pages contain up to 120 epochs and 50,000 positions. The final sample can be closer to the preceding sample when the duration falls between regular output samples. After a modeled entry crossing, that fragment has no later positions.
+
 The demo route returns a versioned bundle with catalog status, object records, a fixed ITRS marker snapshot, and schema examples for a forced scenario, job, frame page and result. The frame example is empty because no collision was computed. All fixture evidence is `SYNTHETIC_DEMO`. Separate lane endpoints must carry their own provenance and validation. In the MVP request example below, `max_cascade_generations` must be `0`.
 
 Regenerate from the repository root whenever the API schema changes:

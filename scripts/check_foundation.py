@@ -18,11 +18,27 @@ CHECKS = {
     "lint": [[UV, "run", "--locked", "ruff", "check", "services/api"], [NPM, "run", "lint"]],
     "typecheck": [[UV, "run", "--locked", "mypy", "services/api/app"], [NPM, "run", "typecheck"]],
     "unit": [
-        [UV, "run", "--locked", "pytest", "-q", "services/api/tests/test_models.py"],
+        [
+            UV,
+            "run",
+            "--locked",
+            "pytest",
+            "-q",
+            "services/api/tests/test_models.py",
+            "services/api/tests/test_collision.py",
+        ],
         [NPM, "test"],
     ],
     "integration": [
-        [UV, "run", "--locked", "pytest", "-q", "services/api/tests/test_api.py"],
+        [
+            UV,
+            "run",
+            "--locked",
+            "pytest",
+            "-q",
+            "services/api/tests/test_api.py",
+            "services/api/tests/test_scenarios.py",
+        ],
         [NPM, "run", "contracts:check"],
     ],
     "security": [

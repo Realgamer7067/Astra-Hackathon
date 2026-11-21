@@ -2,6 +2,16 @@
 
 Implementation requirements, not claims of completed validation. The backend owns scientific states; all numerical tolerances must be recorded with tests.
 
+## Local collision model
+
+The synthetic snapshot supplies ITRS positions and velocities. Astropy converts both to GCRS at the same UTC epoch. At forced contact, the moved object's position becomes the target's position and its inertial velocity stays unchanged. The result stores both versions and the original separation. Replay samples are converted to ITRS meters at their own epochs with bundled Earth orientation data.
+
+The representative breakup uses a truncated power law for lengths and divides 60% of parent mass according to the cube of those lengths. It subtracts the mass-weighted mean velocity impulse so the resolved pieces and the unresolved mass share the center-of-mass momentum budget. The unresolved mass is represented as an aggregate moving with the center of mass. The impulse cap is 0.5 km/s and the fragment relative-energy budget is 15% of the impact energy. Those fractions are model assumptions. The resolved count describes the sample, and the model does not estimate the full number of pieces.
+
+RK4 advances at steps of up to 15 seconds with two-body gravity and J2. The Earth's pole is transformed to GCRS at impact and held fixed for the run. A crossing of a sphere with radius equal to the equatorial Earth radius plus 120 km terminates that sampled trajectory. Position and time at the crossing are interpolated within the integration step. Geodetic coordinates identify the modeled crossing only. Drag, further breakup, surface impacts and survival are outside the model.
+
+The unit tests compare a two-body circular orbit with its analytic position to within 0.02 km after 5,400 seconds, check the direction of J2 nodal precession and verify that fragments which cross the threshold disappear from later samples. Separate tests cover seeded output and mass, momentum and energy budgets.
+
 ## 5. COORDINATES, TIME, AND ORBITAL PHYSICS
 
 - Time: UTC ISO 8601 over API; timezone-aware timestamps. Store Unix/Julian time safely; all calculations use real seconds, not animation frames. JPL vector epochs may be TDB/TT; explicit conversion required.
