@@ -1,0 +1,823 @@
+{
+  "description": "Portable snapshots of locally installed skill bundles; identical copies deduplicated. Source labels denote installation roots, not authorship. Original license files retained where present.",
+  "skills": {
+    "agent-browser": {
+      "name": "agent-browser",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "34cba8cb4a29d46c04d3321cd043825ce8f7952725780c8e247f4dd06329af70",
+      "file_count": 1,
+      "bytes": 3220
+    },
+    "brainstorming": {
+      "name": "brainstorming",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "dfa56452d628e50b7b0f19954b1fc3b35d3a8236bcb354ac7d0b6b67161e153f",
+      "file_count": 8,
+      "bytes": 82281
+    },
+    "brandkit": {
+      "name": "brandkit",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "8af8a3df2f82241446b66fb833a35c661ebad90cbc3e96a3a591146fc55c9ddc",
+      "file_count": 1,
+      "bytes": 15992
+    },
+    "cavecrew": {
+      "name": "cavecrew",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "accd85e9ef1dbbe652c059d8a7ffc23035eb3efc360b5cadf8d478f48287c626",
+      "file_count": 2,
+      "bytes": 6479
+    },
+    "caveman": {
+      "name": "caveman",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "d39728aff618fa025937a5cfcb9399b520fe05738b35b8bbcc24f70978ba5aaf",
+      "file_count": 2,
+      "bytes": 8924
+    },
+    "caveman-commit": {
+      "name": "caveman-commit",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "d0f73b5e2d4a918c5f9284e4a1a1a24c6193f6b321ed29faa4cab73d1872fdfd",
+      "file_count": 2,
+      "bytes": 3597
+    },
+    "caveman-compress": {
+      "name": "caveman-compress",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "2b468aabc032c2a3eb66b452f31ba8042bc31f6ec0813a11848b246fce7a7632",
+      "file_count": 10,
+      "bytes": 71065
+    },
+    "caveman-discover": {
+      "name": "caveman-discover",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "0166e7f79aa9d06bce0c8c78d628ca7b5aacc1c0462bf6fc438850370e94a86b",
+      "file_count": 1,
+      "bytes": 5276
+    },
+    "caveman-evidence-review": {
+      "name": "caveman-evidence-review",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "542e40f3e5b10b577572aabac7baf03f85a8267f3a7ab5af033c34eb3df1858b",
+      "file_count": 1,
+      "bytes": 3734
+    },
+    "caveman-explore": {
+      "name": "caveman-explore",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "88c07e0fe6b511116a00e6eed07491bafef50500ebf5b076a6507622ecdc6446",
+      "file_count": 3,
+      "bytes": 4474
+    },
+    "caveman-help": {
+      "name": "caveman-help",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "2c2b5b31ada48026e60547038fba2ea8f8c0d9b91e92699f0d20ff8d349aa092",
+      "file_count": 2,
+      "bytes": 3181
+    },
+    "caveman-learn": {
+      "name": "caveman-learn",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "338e185bb7f162bd7576a0aa3f41ef7fcfd17e347b35b79cdb0bb9488af88ba2",
+      "file_count": 6,
+      "bytes": 16005
+    },
+    "caveman-manage": {
+      "name": "caveman-manage",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "fe70ff2a48c4e186fabc426fa69d92ad86480a735077c4be14794d596918d3f3",
+      "file_count": 1,
+      "bytes": 3916
+    },
+    "caveman-optimize": {
+      "name": "caveman-optimize",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "30759ab1276c31d1b1d5469e08a642e2be8a6418401f08c3b58764543efc8c02",
+      "file_count": 1,
+      "bytes": 4723
+    },
+    "caveman-review": {
+      "name": "caveman-review",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "1d3483c4c2f5096352f53265b7e24b87949f7486b2d0ce8cc55fb909fbd1bbcc",
+      "file_count": 2,
+      "bytes": 3777
+    },
+    "caveman-setup": {
+      "name": "caveman-setup",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "146a31526c332c3434f4ace8315ac96404123c94968e3a4d3b5eaebe6d8efa70",
+      "file_count": 1,
+      "bytes": 10524
+    },
+    "caveman-stats": {
+      "name": "caveman-stats",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "b19adb31e7311bd5ead68502a1c7c6312dd29a941061badc1e4b6ed10fbcaab3",
+      "file_count": 2,
+      "bytes": 3115
+    },
+    "design-mobile-apps": {
+      "name": "design-mobile-apps",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "1d375d6631dd8ddd66d7d663f847b329b628878461aab95609195190bb08e483",
+      "file_count": 7,
+      "bytes": 59435
+    },
+    "design-taste-frontend": {
+      "name": "design-taste-frontend",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "7c3dadb001c53898b8122d5d6698c8c9216d0d44ba94a78ffaec2d2efb500138",
+      "file_count": 38,
+      "bytes": 2419796
+    },
+    "design-taste-frontend-v1": {
+      "name": "design-taste-frontend-v1",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "1cda4c1bb736865baade4cf14f6520bec60bdec2dc65a86c39776784736a9654",
+      "file_count": 1,
+      "bytes": 21195
+    },
+    "diagnosing-superpowers": {
+      "name": "diagnosing-superpowers",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "16040074f818943ddbf85be3a7687e186f3299dde06b4754b0964d7305dbb224",
+      "file_count": 20,
+      "bytes": 40841
+    },
+    "dispatching-parallel-agents": {
+      "name": "dispatching-parallel-agents",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "2e5f18b30479092e903a4b107355d3ddcd28540f687e7e58307002c23bbfded4",
+      "file_count": 1,
+      "bytes": 6078
+    },
+    "domain-modeling": {
+      "name": "domain-modeling",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "18fd9c1b225ea276fc3f6de8b13f4bfc89c1703ea2e9e7c6c04d0c8c7c05c960",
+      "file_count": 4,
+      "bytes": 8480
+    },
+    "executing-plans": {
+      "name": "executing-plans",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "fda0ad3243146274522c2318f8088d6fa196060d2f506252fb827ad91c7c2a35",
+      "file_count": 3,
+      "bytes": 23038
+    },
+    "find-skills": {
+      "name": "find-skills",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "1df2204acb101e822b85afac8f8b0e7b2042ccda4aae851014b57f8e775392ea",
+      "file_count": 1,
+      "bytes": 5472
+    },
+    "finishing-a-development-branch": {
+      "name": "finishing-a-development-branch",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "bc6e2b6d00c888ac9d7c72d4b13730a41995a97f6b9dc03599f41c6568d6d011",
+      "file_count": 1,
+      "bytes": 7781
+    },
+    "frontend-design": {
+      "name": "frontend-design",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "19de668f2da4a0cd78cce1a5e7e10094ac01d0feb80bcc7190fee085ce49df32",
+      "file_count": 2,
+      "bytes": 19564
+    },
+    "full-output-enforcement": {
+      "name": "full-output-enforcement",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "f07af7f89f8ade4c8e23f7480295b63f5cacae52d3d0524ab8cb2c1707d6951e",
+      "file_count": 1,
+      "bytes": 2592
+    },
+    "gpt-taste": {
+      "name": "gpt-taste",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "de94c3f5bb41fa1fa15e503a4a8707e24d2854abdd698fa2697ace1fd8972bb2",
+      "file_count": 1,
+      "bytes": 7857
+    },
+    "grill-me": {
+      "name": "grill-me",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "d983fc6945c3ac0b1dfdd957c53c1b5f2063f88b49944d595a5729ab3fc1794c",
+      "file_count": 2,
+      "bytes": 294
+    },
+    "grill-with-docs": {
+      "name": "grill-with-docs",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "82c1260cc740362f058733c764da971e16b3f0a16562f0d572485ce3f1a6f0c1",
+      "file_count": 2,
+      "bytes": 392
+    },
+    "grilling": {
+      "name": "grilling",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "42ea9ca084a4e95c9682bd1fe541dcef6641695cc7ececccf5b94ce71c06e79f",
+      "file_count": 2,
+      "bytes": 2190
+    },
+    "hackathon-win": {
+      "name": "hackathon-win",
+      "sources": [
+        "shared",
+        "codex",
+        "claude"
+      ],
+      "sha256": "6e5665a2914bc5a3cd47c837e95254f692ff35ebbf302a31526861a2dafbce9d",
+      "file_count": 42,
+      "bytes": 149773
+    },
+    "high-end-visual-design": {
+      "name": "high-end-visual-design",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "78975396a05291e853e4de4a410116cc93f8b20a84f84a85c1eab0d401e440ae",
+      "file_count": 1,
+      "bytes": 10561
+    },
+    "hyperframes": {
+      "name": "hyperframes",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "3c9e61e04870d8648080c6ab0ebc60173c64ba44afcf4d160ba605dc466089c4",
+      "file_count": 78,
+      "bytes": 1151138
+    },
+    "hyperframes-cli": {
+      "name": "hyperframes-cli",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "a41bdd0ff0c452f0bd0496d08d38d6d19b4c50ce66fdb81746d999a15649d6da",
+      "file_count": 13,
+      "bytes": 130197
+    },
+    "image-to-code": {
+      "name": "image-to-code",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "5b2c88b0bf25dadc4fc4dfa51ea1d573691c8da3bb2e0be402596b3dbfec8fbe",
+      "file_count": 1,
+      "bytes": 36442
+    },
+    "imagegen-frontend-mobile": {
+      "name": "imagegen-frontend-mobile",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "fd2f7799e66bf0eeaee214130d1236a4b28f02c32356d5c943e06057db2b1d71",
+      "file_count": 1,
+      "bytes": 40326
+    },
+    "imagegen-frontend-web": {
+      "name": "imagegen-frontend-web",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "3c09b1b364ef6d6d2d800a9343f68584c2e24b6d8121fd76a3a3ac336a974e43",
+      "file_count": 1,
+      "bytes": 36854
+    },
+    "improve-codebase-architecture": {
+      "name": "improve-codebase-architecture",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "392561550dc4b3f8c6411ed7920b2b53a3e8e315dc26ff438214feee7bf074d2",
+      "file_count": 3,
+      "bytes": 12835
+    },
+    "industrial-brutalist-ui": {
+      "name": "industrial-brutalist-ui",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "e8dcf79e3f1a90ed34227fa340e8931f8d387b8c9949e3a0a5ef4b67500298bc",
+      "file_count": 1,
+      "bytes": 8456
+    },
+    "investigate-first": {
+      "name": "investigate-first",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "f5de93d62877336aa8e646261fb8aaa4bcf5f15848c893f94f831aa6023a7a36",
+      "file_count": 2,
+      "bytes": 890
+    },
+    "lean-build": {
+      "name": "lean-build",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "231fd26a2fc0105ae0dbc03ca59871778bae25a6770cdb2600cdbc00d5c75ecc",
+      "file_count": 2,
+      "bytes": 1280
+    },
+    "media-use": {
+      "name": "media-use",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "f5cf7918c7adda2cd206bd9f428fd8e89b37269751d557a0a028151ee703c189",
+      "file_count": 122,
+      "bytes": 1924733
+    },
+    "migration": {
+      "name": "migration",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "cd7dbde4f6d9621df51fcc658ff01669e4b5290094bae53857fdb952866726f8",
+      "file_count": 2,
+      "bytes": 987
+    },
+    "minimalist-ui": {
+      "name": "minimalist-ui",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "54a22e7cdec0bd7fd62157f2340580edb81aca945e027d0e4947db256e7dcbe1",
+      "file_count": 1,
+      "bytes": 7901
+    },
+    "receiving-code-review": {
+      "name": "receiving-code-review",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "de172be1e6037b69b145eaccf238bf39b7a0b443db115b3d012ae861d2ad030c",
+      "file_count": 1,
+      "bytes": 6203
+    },
+    "reddit-automation": {
+      "name": "reddit-automation",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "63d365de3a9325f23f711e4f1020af65c8c27e7fe6ff828dff15d8c380e159e6",
+      "file_count": 1,
+      "bytes": 8008
+    },
+    "redesign-existing-projects": {
+      "name": "redesign-existing-projects",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "9d2c6a925e7f052954d86e59e92c953a5dae05cc580ae59b1751376d31f56fa4",
+      "file_count": 1,
+      "bytes": 15060
+    },
+    "requesting-code-review": {
+      "name": "requesting-code-review",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "a5cec9fd45e1425a4d0c7570d288709c4906e52ab730c27d54cd059e672e2911",
+      "file_count": 2,
+      "bytes": 9426
+    },
+    "safe-refactor": {
+      "name": "safe-refactor",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "6586385362c62137c650f1e2f7d885b8646127574c34f3044b29a53a37009439",
+      "file_count": 2,
+      "bytes": 906
+    },
+    "stitch-design-taste": {
+      "name": "stitch-design-taste",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "a61f32289eb471535b8e56f63dc65e8fdba8752d63af1751e4fbca8719f576d1",
+      "file_count": 2,
+      "bytes": 23904
+    },
+    "subagent-driven-development": {
+      "name": "subagent-driven-development",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "e1b8b570338183c8f478a5615ca42af2570f8a6edbf67567cc6ec6bc17d3240b",
+      "file_count": 7,
+      "bytes": 59320
+    },
+    "surgical-patch": {
+      "name": "surgical-patch",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "3c9b1a664c68ef79ba00082edc242f7bed636a5da89ce12a41be57c90a57713b",
+      "file_count": 2,
+      "bytes": 858
+    },
+    "systematic-debugging": {
+      "name": "systematic-debugging",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "be000337e90f2d1394d441013f75c1d700a37340808ae68a8caf4e2e9bce3e64",
+      "file_count": 11,
+      "bytes": 40777
+    },
+    "test-driven-development": {
+      "name": "test-driven-development",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "1ea0fb02cb626926b04dccb30d1c80c528a0994135a24bae8cf8a064a022321e",
+      "file_count": 2,
+      "bytes": 17846
+    },
+    "using-git-worktrees": {
+      "name": "using-git-worktrees",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "40af03bf20f17f0a2544cb2d24091e3577abe393f4b4359a5fcaac6257085861",
+      "file_count": 1,
+      "bytes": 6813
+    },
+    "using-superpowers": {
+      "name": "using-superpowers",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "fba5a998b16d3feaac8894c7839d75f057e00774b4ce2454ae37aa81ae746de7",
+      "file_count": 8,
+      "bytes": 20630
+    },
+    "vercel-react-best-practices": {
+      "name": "vercel-react-best-practices",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "64c094f43b4c92ffc6c9e46f03e873d4ad41a104ee3ba89fd11ec15b2e8110ee",
+      "file_count": 75,
+      "bytes": 229462
+    },
+    "verification-before-completion": {
+      "name": "verification-before-completion",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "89a426c6e82dd7e5f8c2cda146d422dede1e3c70c6436eaf9acc7dc103d0a2ea",
+      "file_count": 1,
+      "bytes": 3646
+    },
+    "verify-and-stop": {
+      "name": "verify-and-stop",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "75aa895be5205e811349597ce91bb8a8dcdeda8f3d4c26bc9f452300aec9a85e",
+      "file_count": 2,
+      "bytes": 901
+    },
+    "web-design-guidelines": {
+      "name": "web-design-guidelines",
+      "sources": [
+        "shared",
+        "claude"
+      ],
+      "sha256": "d5cb29ea15d5ceeb4ef0802e75c17ef4287c6f60ff8aa05e46c6080f615178bc",
+      "file_count": 1,
+      "bytes": 1231
+    },
+    "writing-plans": {
+      "name": "writing-plans",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "da556af0e77b07c75a9fce3ebaffdcaf07001ff95d28b0edf38310674228a8bd",
+      "file_count": 1,
+      "bytes": 10335
+    },
+    "writing-skills": {
+      "name": "writing-skills",
+      "sources": [
+        "shared"
+      ],
+      "sha256": "003da07733689051f18d37826a72f81b76167ec4d5df3a695e882ba0a7b245d2",
+      "file_count": 7,
+      "bytes": 107640
+    },
+    "create-statusline": {
+      "name": "create-statusline",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "07cbf83c50157bbc28cef4b478a998d38518dd6cfe3b2c86983d63682c92ce90",
+      "file_count": 4,
+      "bytes": 11544
+    },
+    "imagegen": {
+      "name": "imagegen",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "cd95d1b11b07472ca83d2d83d77637852b38488d0f0662d502c6fb5da4756c81",
+      "file_count": 12,
+      "bytes": 126829
+    },
+    "openai-docs": {
+      "name": "openai-docs",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "557b67637fa4c6bb8b667dc28997de51dc95ca13bd4b372ed9e58e7308e6628d",
+      "file_count": 17,
+      "bytes": 89923
+    },
+    "review-agent": {
+      "name": "review-agent",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "1f5cbb2c1ab0f2f722be1a764f946e3b499ad70c7aa5a49220c4285face1c1d6",
+      "file_count": 2,
+      "bytes": 2913
+    },
+    "skill-creator": {
+      "name": "skill-creator",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "8e65eb891cbf22a96beb2ae42f03951ce17cc2ba617ffa0ddd3c0bc31c182b81",
+      "file_count": 9,
+      "bytes": 53322
+    },
+    "skill-installer": {
+      "name": "skill-installer",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "5539dfce6f6946e3e58ddabbe87cdbaaa00c9e556fff038a5b9054534487dab7",
+      "file_count": 8,
+      "bytes": 32479
+    },
+    "mainline-kernel-auditor": {
+      "name": "mainline-kernel-auditor",
+      "sources": [
+        "codex"
+      ],
+      "sha256": "f63896641a69b13f7064476298c2303243d6e68947101234a04535c03f9d9d61",
+      "file_count": 16,
+      "bytes": 119852
+    },
+    "mainline-phone-porting": {
+      "name": "mainline-phone-porting",
+      "sources": [
+        "codex",
+        "claude"
+      ],
+      "sha256": "7eb53f9a954057fc92158ebbc94fc57355f9f73a8a0cca9d7feaafcc1c17130f",
+      "file_count": 32,
+      "bytes": 223696
+    },
+    "banner-design": {
+      "name": "banner-design",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "11ec6f36a78060cd30326350ebd54ae01446fc52d2f33d920cfb038c37862020",
+      "file_count": 2,
+      "bytes": 13319
+    },
+    "brand": {
+      "name": "brand",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "9e54f265270cabbbb4bf4808fca4270e7989abca353f532389d0e3c210258422",
+      "file_count": 18,
+      "bytes": 88892
+    },
+    "design": {
+      "name": "design",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "19143255068a24a5e641dd2550376c737657ba186ae389970d3713c4713f5d31",
+      "file_count": 35,
+      "bytes": 241945
+    },
+    "design-system": {
+      "name": "design-system",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "e326f3e0a0174fba1afeabcb448e5556b44ccb98f79a27c15294a3d59c4e8ae5",
+      "file_count": 27,
+      "bytes": 179018
+    },
+    "playwright-cli": {
+      "name": "playwright-cli",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "77a04e7d518241366ae53558e931071d68ae2e0282b3c2f369b5f902c6083a2c",
+      "file_count": 11,
+      "bytes": 68749
+    },
+    "reverse-engineer-anything": {
+      "name": "reverse-engineer-anything",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "8828a1fe1abb1f7d010d619bbc4141fec0b88f4359c02d7343a3b38df4ec6ea2",
+      "file_count": 7,
+      "bytes": 70160
+    },
+    "slides": {
+      "name": "slides",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "6eb08e33e2bc47ea27cb1c9621f653f0b37a555a84003b5c814c85612f3e69b5",
+      "file_count": 6,
+      "bytes": 19304
+    },
+    "docs": {
+      "name": "docs",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "37324851e61103608fa51b17e6f0592d45df927c8c56d419c061e54d3d372f1e",
+      "file_count": 1,
+      "bytes": 1249
+    },
+    "docx": {
+      "name": "docx",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "86a472f04e1540cecf087e48a5a19d0614390a21b043adda0f56c3bbfc45310d",
+      "file_count": 61,
+      "bytes": 1161593
+    },
+    "import-memory": {
+      "name": "import-memory",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "bdc4e66f749340f4e066491602306cadbebc719f31a11ab01a461ce4d32de8ea",
+      "file_count": 1,
+      "bytes": 10689
+    },
+    "morning": {
+      "name": "morning",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "3835eb89bacde9bd0cd66d18b1adb2c9d0997427ecfa345382346c48df9a4677",
+      "file_count": 3,
+      "bytes": 40742
+    },
+    "pdf": {
+      "name": "pdf",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "4342b3c5f6bc820df1d6cc525f6915e2809c792915c09314d206489be4ad6c20",
+      "file_count": 12,
+      "bytes": 68603
+    },
+    "pptx": {
+      "name": "pptx",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "6ec8608fe8a56bfaf275d86819d90c62f312ec13a61b3471a642734c523f8d1c",
+      "file_count": 58,
+      "bytes": 1195252
+    },
+    "claude-skill-creator": {
+      "name": "skill-creator",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "a0821cff53645aa9cbfeba448bd26b076d0372f9c02c7747dbf7fb06cf373096",
+      "file_count": 18,
+      "bytes": 249046
+    },
+    "xlsx": {
+      "name": "xlsx",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "258f75cb05f0117bdb8d72fc44d9f1966c83b5dc4412a6cd5d62ad622bf2fb37",
+      "file_count": 53,
+      "bytes": 1140122
+    },
+    "ui-styling": {
+      "name": "ui-styling",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "eb0818079106ad526baff72baec2138aa0083742bc5efc5baf2842861d3f170d",
+      "file_count": 16,
+      "bytes": 170925
+    },
+    "ui-ux-pro-max": {
+      "name": "ui-ux-pro-max",
+      "sources": [
+        "claude"
+      ],
+      "sha256": "26d48ef152b7044793f6c6f72da98fbb780253a4a7f18f4672c8661b9c1d631c",
+      "file_count": 68,
+      "bytes": 3566753
+    }
+  }
+}

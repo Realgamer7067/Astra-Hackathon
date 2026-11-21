@@ -50,3 +50,9 @@ Do not rewrite prior decisions without noting why they changed.
 - Status: User-requested allocation, 2026-11-21; formal claim merge pending.
 - Decision: User + main agent take lane B / TASK-003: scenario setup, collision physics, fragmentation, numerical propagation and jobs, retaining TASK-001 foundation and coordination. Catalog lane A / TASK-002 is proposed for Teammate 2. Lanes C and D remain unchanged.
 - Consequence: Supersedes the initial person-to-lane mapping; interfaces and dependencies remain unchanged. Reserve the collision card for the user.
+
+## ASTRA-005: Share installed local skill bundles
+
+- Status: Explicitly requested by user on 2026-11-21.
+- Decision: Bundle portable snapshots from local shared, Codex and Claude skill directories into .agents/skills, including supporting files and available licenses. Deduplicate identical trees; preserve differing versions. Exclude enclosing sync bookkeeping, personal settings, sessions, caches and credentials. Plugin caches are outside this local-install snapshot.
+- Consequence: Supersedes the starter’s no-bundled-skills default. Clients may need explicit SKILL.md references; provider tools and dependencies remain separate. Manifest records source labels and content hashes without personal absolute paths.

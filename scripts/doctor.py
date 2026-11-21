@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     missing = [name for name in files if not (ROOT / name).is_file()]
     for name in files:
         print(f"  {'OK' if name not in missing else 'MISSING'} {name}")
-    print("\nLocal skills: deliberately not bundled; use .agents/skills/ for shared skills and tool-specific directories for personal installs.")
+    print("\nShared skills: see .agents/skills/README.md for bundled snapshots; verify discovery in your chosen agent.")
     for path in (".agents/skills", ".claude/skills", ".opencode/skills", ".gemini/skills", ".cursor/skills"):
         directory = ROOT / path
         if directory.exists():

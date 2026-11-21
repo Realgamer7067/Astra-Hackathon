@@ -63,4 +63,4 @@ After choosing a stack, create `project-checks.json` from [project-checks.exampl
 
 ## Shared skills
 
-Add your chosen team skills to `.agents/skills/` and commit them when ready. Personal tool-specific installations stay local. See the [skills guide](docs/TOOL_COMPATIBILITY.md#skills).
+The installed Codex, Claude and shared skills are now bundled in [.agents/skills/README.md](.agents/skills/README.md): 89 distinct bundles, with identical installations deduplicated and differing versions retained. Personal tool settings, credentials and sessions stay local. See the [skills guide](docs/TOOL_COMPATIBILITY.md#skills).

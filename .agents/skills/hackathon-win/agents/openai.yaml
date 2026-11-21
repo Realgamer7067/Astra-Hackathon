@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hackathon Win"
+  short_description: "Win-focused hackathon strategy and delivery"
+  default_prompt: "Use $hackathon-win to inspect this hackathon and identify the highest-value action for winning."
