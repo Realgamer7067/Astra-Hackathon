@@ -14,6 +14,21 @@ export type FramesState =
       provenance: Provenance;
     };
 
+export type ImpactSite = { timeMs: number; position: Vec3 };
+
+/**
+ * Authoritative collision impact metadata coordinated with TASK-003.
+ * All positions exposed to the globe/timeline must be in ITRS meters.
+ */
+export type AuthoritativeImpact = {
+  /** Authoritative impact UTC timestamp (e.g. scenario.epoch_utc). */
+  atUtc?: string | null;
+  /** Pre-parsed impact timestamp in epoch milliseconds. */
+  timeMs?: number | null;
+  /** Authoritative impact coordinates in ITRS meters. */
+  position?: Vec3 | null;
+};
+
 /** A page is replayable only with at least two samples that contain positions. */
 export function classifyFramePage(page: FramePage): FramesState {
   const populated = page.samples.filter((s) => s.positions.length > 0);
@@ -57,37 +72,97 @@ export async function fetchAllFrames(
   throw new Error("Frames exceeded the page limit");
 }
 
-export type ImpactSite = { timeMs: number; position: Vec3 };
+function centroid(positions: readonly { position: Vec3 }[]): Vec3 {
+  const sum: Vec3 = [0, 0, 0];
+  for (const p of positions) {
+    for (let k = 0; k < 3; k++) sum[k]! += p.position[k]!;
+  }
+  const n = positions.length;
+  return [sum[0] / n, sum[1] / n, sum[2] / n];
+}
+
+function resolveAuthoritativeTimeMs(
+  authoritative: AuthoritativeImpact | null | undefined,
+  fallbackSample: FrameSample | undefined,
+): number | null {
+  if (
+    authoritative?.timeMs !== undefined &&
+    authoritative.timeMs !== null &&
+    Number.isFinite(authoritative.timeMs)
+  ) {
+    return authoritative.timeMs;
+  }
+  if (authoritative?.atUtc) {
+    const parsed = Date.parse(authoritative.atUtc);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  if (fallbackSample) {
+    const parsed = Date.parse(fallbackSample.at_utc);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
 
 /**
- * Impact event from frame data: the first sample where several objects appear
- * that were absent from the previous sample (a fragment cloud being born). The
- * site is the centroid of those new objects. This relies on FRAMES-v1 emitting
- * fragments only from the collision onward; the contract has no explicit
- * impact time/position yet, so this is a derived value and null when no such
- * event exists.
+ * Resolves the collision impact time and ITRS-meter position:
+ * 1. If authoritative ITRS-meter impact coordinates are supplied, uses them
+ *    directly at the authoritative impact epoch (or sample 0).
+ * 2. If fragments are born mid-timeline (sample i >= 1 has >= minBirths new IDs
+ *    not present in sample i - 1, as in the synthetic preview), uses that
+ *    birth sample's epoch and centroid.
+ * 3. If an authoritative impact epoch matches a sample with >= minBirths
+ *    positions, uses that sample's epoch and ITRS-meter centroid.
+ * 4. First-frame impact case: TASK-003's collision runner starts propagation at
+ *    impact with every fragment already present in sample 0. When sample 0 has
+ *    >= minBirths objects, uses sample 0's epoch and ITRS-meter centroid.
  */
 export function detectImpact(
   samples: readonly FrameSample[],
   minBirths = 2,
+  authoritative?: AuthoritativeImpact | null,
 ): ImpactSite | null {
+  if (authoritative?.position) {
+    const timeMs = resolveAuthoritativeTimeMs(authoritative, samples[0]);
+    if (timeMs !== null) {
+      return { timeMs, position: [...authoritative.position] };
+    }
+  }
+
+  if (samples.length === 0) return null;
+
   for (let i = 1; i < samples.length; i++) {
     const previous = new Set(samples[i - 1]!.positions.map((p) => p.object_id));
     const births = samples[i]!.positions.filter(
       (p) => !previous.has(p.object_id),
     );
     if (births.length < minBirths) continue;
-    const sum: Vec3 = [0, 0, 0];
-    for (const p of births)
-      for (let k = 0; k < 3; k++) sum[k]! += p.position[k]!;
     return {
       timeMs: Date.parse(samples[i]!.at_utc),
-      position: [
-        sum[0] / births.length,
-        sum[1] / births.length,
-        sum[2] / births.length,
-      ],
+      position: centroid(births),
     };
   }
+
+  const authTimeMs = resolveAuthoritativeTimeMs(authoritative, undefined);
+  if (authTimeMs !== null) {
+    const matched = samples.find(
+      (s) =>
+        Date.parse(s.at_utc) === authTimeMs && s.positions.length >= minBirths,
+    );
+    if (matched) {
+      return {
+        timeMs: authTimeMs,
+        position: centroid(matched.positions),
+      };
+    }
+  }
+
+  const first = samples[0]!;
+  if (first.positions.length >= minBirths) {
+    return {
+      timeMs: Date.parse(first.at_utc),
+      position: centroid(first.positions),
+    };
+  }
+
   return null;
 }

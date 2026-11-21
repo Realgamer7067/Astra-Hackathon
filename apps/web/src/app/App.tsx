@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import TimelineControls from "../timeline/TimelineControls";
-import { useReplaySession } from "./useReplaySession";
+import ReplayBar from "../timeline/ReplayBar";
 import {
   type DemoBundle,
   kindColors,
@@ -8,12 +7,16 @@ import {
   loadDemo,
   utcLabel,
 } from "./demo";
+import {
+  type ReplaySessionOptions,
+  useReplaySession,
+} from "./useReplaySession";
 
 const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
-export function App() {
+export function App(props: { replayOptions?: ReplaySessionOptions } = {}) {
   const [previewing, setPreviewing] = useState(false);
   const [lowGraphics, setLowGraphics] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "loading" });
@@ -25,7 +28,12 @@ export function App() {
     (sample) => sample.object_id === selectedId,
   );
 
-  const session = useReplaySession(state.status, demo, previewing);
+  const session = useReplaySession(
+    state.status,
+    demo,
+    previewing,
+    props.replayOptions,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -83,75 +91,14 @@ export function App() {
             <h1 id="scene-title">Earth orbit</h1>
             <p>{demo ? utcLabel(demo.states.at_utc) : "Awaiting a snapshot"}</p>
           </div>
-          <div className="replay-bar">
-            <label className="preview-toggle">
-              <input
-                type="checkbox"
-                checked={previewing}
-                onChange={(e) => setPreviewing(e.target.checked)}
-              />
-              Synthetic replay preview
-            </label>
-            {previewing ? (
-              <p className="synthetic-badge" role="note">
-                SYNTHETIC DEMO: illustrative motion, not a simulation result
-              </p>
-            ) : session.framesState.status === "loading" ? (
-              <p className="effect-note" role="status">
-                Loading replay frames…
-              </p>
-            ) : session.framesState.status === "error" ? (
-              <div className="failure">
-                <p role="alert">
-                  Replay frames unavailable. {session.framesState.message}
-                </p>
-                <button onClick={retry}>Retry</button>
-              </div>
-            ) : session.framesState.status === "empty" ? (
-              <p className="effect-note" role="status">
-                No replay frames in this run
-                {session.provenance ? ` (${session.provenance.kind})` : ""}.
-                Nothing to replay yet.
-              </p>
-            ) : (
-              <p className="synthetic-badge" role="note">
-                Replay frames: {session.provenance?.kind} ·{" "}
-                {session.provenance?.mode}
-                {session.provenance?.kind === "HYPOTHETICAL_SIMULATION"
-                  ? " · HYPOTHETICAL SCENARIO, NOT A PREDICTION"
-                  : ""}
-              </p>
-            )}
-            {session.replayable && (
-              <>
-                {previewing && (
-                  <p className="effect-note">
-                    Impact flash is a decorative effect, not simulated debris.
-                  </p>
-                )}
-                <div className="timeline-buttons">
-                  <button
-                    onClick={session.focusImpact}
-                    disabled={!session.hasImpact}
-                  >
-                    Fly to impact
-                  </button>
-                  <label className="preview-toggle">
-                    <input
-                      type="checkbox"
-                      checked={lowGraphics}
-                      onChange={(e) => setLowGraphics(e.target.checked)}
-                    />
-                    Low graphics
-                  </label>
-                </div>
-                <TimelineControls
-                  replay={session.replay}
-                  label={previewing ? "synthetic" : session.provenance?.kind}
-                />
-              </>
-            )}
-          </div>
+          <ReplayBar
+            session={session}
+            previewing={previewing}
+            onPreviewChange={setPreviewing}
+            lowGraphics={lowGraphics}
+            onLowGraphicsChange={setLowGraphics}
+            onRetry={retry}
+          />
           <small className="credit">Natural Earth</small>
         </section>
         <aside className="catalog" aria-labelledby="catalog-title">
