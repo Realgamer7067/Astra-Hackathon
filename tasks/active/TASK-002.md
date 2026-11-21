@@ -1,6 +1,6 @@
 # TASK-002: Catalog explorer and correct orbital states
 
-- **Owner:** unclaimed
+- **Owner:** mayukh-oss
 - **Dependencies:** TASK-001
 - **PR:** none
 - **Target demo behavior:** Search/select real or explicitly demo objects; six-digit IDs preserved; validated SGP4 and frame conversion; source age/coverage and provider failure modes visible.
