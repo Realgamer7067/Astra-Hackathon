@@ -1,6 +1,6 @@
 # TASK-004: Cinematic globe and deterministic timeline
 
-- **Owner:** unclaimed
+- **Owner:** snehkhanpara1108
 - **Dependencies:** TASK-001; real integration needs TASK-002 and TASK-003
 - **PR:** none
 - **Target demo behavior:** Token-free globe renders batched catalog markers; real saved frames replay/pause/scrub; VFX independent of physics; desktop/mobile/keyboard and reduced motion verified; actual FPS recorded.
