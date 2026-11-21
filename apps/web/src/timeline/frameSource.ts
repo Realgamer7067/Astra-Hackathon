@@ -27,6 +27,12 @@ export type AuthoritativeImpact = {
   timeMs?: number | null;
   /** Authoritative impact coordinates in ITRS meters. */
   position?: Vec3 | null;
+  /**
+   * True when frames come from a confirmed collision run (e.g. completed
+   * HYPOTHETICAL_SIMULATION from /frames), allowing a single resolved fragment
+   * (max_resolved_fragments: 1) in the impact frame.
+   */
+  confirmed?: boolean;
 };
 
 /** A page is replayable only with at least two samples that contain positions. */
@@ -110,11 +116,12 @@ function resolveAuthoritativeTimeMs(
  * 2. If fragments are born mid-timeline (sample i >= 1 has >= minBirths new IDs
  *    not present in sample i - 1, as in the synthetic preview), uses that
  *    birth sample's epoch and centroid.
- * 3. If an authoritative impact epoch matches a sample with >= minBirths
- *    positions, uses that sample's epoch and ITRS-meter centroid.
+ * 3. If an authoritative impact epoch matches a populated sample (including a
+ *    single fragment when max_resolved_fragments: 1), uses that sample's epoch
+ *    and ITRS-meter centroid.
  * 4. First-frame impact case: TASK-003's collision runner starts propagation at
- *    impact with every fragment already present in sample 0. When sample 0 has
- *    >= minBirths objects, uses sample 0's epoch and ITRS-meter centroid.
+ *    impact with every fragment already present in sample 0. Accepts >= 1
+ *    position for a confirmed collision frame, or >= minBirths otherwise.
  */
 export function detectImpact(
   samples: readonly FrameSample[],
@@ -145,8 +152,7 @@ export function detectImpact(
   const authTimeMs = resolveAuthoritativeTimeMs(authoritative, undefined);
   if (authTimeMs !== null) {
     const matched = samples.find(
-      (s) =>
-        Date.parse(s.at_utc) === authTimeMs && s.positions.length >= minBirths,
+      (s) => Date.parse(s.at_utc) === authTimeMs && s.positions.length >= 1,
     );
     if (matched) {
       return {
@@ -157,7 +163,8 @@ export function detectImpact(
   }
 
   const first = samples[0]!;
-  if (first.positions.length >= minBirths) {
+  const requiredFirstFramePositions = authoritative?.confirmed ? 1 : minBirths;
+  if (first.positions.length >= requiredFirstFramePositions) {
     return {
       timeMs: Date.parse(first.at_utc),
       position: centroid(first.positions),

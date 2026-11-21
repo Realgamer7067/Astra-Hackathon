@@ -62,6 +62,7 @@ export default function EarthView({
   const burstCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
+  const lastFocusToken = useRef(0);
   const host = useRef<HTMLDivElement>(null);
   const widget = useRef<CesiumWidget | null>(null);
   const points = useRef<PointPrimitiveCollection | null>(null);
@@ -239,21 +240,27 @@ export default function EarthView({
   // Impact camera: fly (or jump, under reduced motion) above the impact site.
   useEffect(() => {
     const instance = widget.current;
-    if (!instance || !impact || !focusToken) return;
-    const direction = Cartesian3.normalize(
-      Cartesian3.fromArray(impact.position),
-      new Cartesian3(),
-    );
+    if (!instance || !available || !impact || !focusToken) return;
+    if (lastFocusToken.current === focusToken) return;
+    const origin = Cartesian3.fromArray(impact.position);
+    const radius = Cartesian3.magnitude(origin);
+    if (!(radius > 0)) return;
+    lastFocusToken.current = focusToken;
+    const direction = Cartesian3.normalize(origin, new Cartesian3());
+    const altitudeAboveSurface = Math.max(0, radius - 6_371_000);
+    const cameraRadius =
+      radius + Math.max(2_000_000, altitudeAboveSurface * 0.6);
     instance.camera.flyTo({
       destination: Cartesian3.multiplyByScalar(
         direction,
-        6_371_000 + 2_500_000,
+        cameraRadius,
         new Cartesian3(),
       ),
       duration: prefersReducedMotion() ? 0 : 1.6,
     });
+    instance.scene.requestRender();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusToken]);
+  }, [focusToken, available, impact]);
 
   function zoom(direction: "in" | "out") {
     const instance = widget.current;

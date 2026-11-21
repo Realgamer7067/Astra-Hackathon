@@ -36,7 +36,7 @@ export function useReplay(samples: readonly FrameSample[]): Replay {
   const end = times[times.length - 1] ?? 0;
   const [clock, setClock] = useState(() => createClock(start, end));
 
-  useEffect(() => setClock(createClock(start, end)), [start, end]);
+  useEffect(() => setClock(createClock(start, end)), [samples, start, end]);
 
   const playing = clock.playing;
   const last = useRef(0);

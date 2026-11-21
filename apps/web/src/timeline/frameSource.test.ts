@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import demoFixture from "../../../../data/fixtures/demo.json";
 import type { DemoBundle } from "../app/demo";
 import { createReplaySessionDriver } from "../app/useReplaySession";
@@ -10,6 +10,11 @@ import {
   type FramePage,
 } from "./frameSource";
 import type { FrameSample } from "./interpolation";
+import {
+  emitScenarioCompleted,
+  normalizeScenarioHandoff,
+  SCENARIO_COMPLETED_EVENT,
+} from "./scenarioHandoff";
 import { syntheticFrames } from "./syntheticFrames";
 
 const provenance: FramePage["provenance"] = {
@@ -54,7 +59,7 @@ describe("classifyFramePage", () => {
 });
 
 describe("detectImpact", () => {
-  it("returns null when samples are empty or fewer than minBirths objects exist", () => {
+  it("returns null when samples are empty or unconfirmed single-object frames have no epoch", () => {
     expect(detectImpact([])).toBeNull();
     expect(
       detectImpact([sample(0, ["only-one"]), sample(1000, ["only-one"])]),
@@ -85,10 +90,36 @@ describe("detectImpact", () => {
       position: [6_871_000, 300, 0],
     });
   });
+  it("handles a one-fragment impact (max_resolved_fragments: 1) when given the run epoch", () => {
+    const epochIso = "2026-11-21T12:00:00Z";
+    const startMs = Date.parse(epochIso);
+    const oneFragSamples: FrameSample[] = Array.from(
+      { length: 121 },
+      (_, i) => ({
+        at_utc: new Date(startMs + i * 60_000).toISOString(),
+        positions: [
+          {
+            object_id: "FRAG-001",
+            position: [6_871_000 + i * 5_000, -120_000 + i * 1_000, 310_000],
+          },
+        ],
+      }),
+    );
+    const hitWithEpoch = detectImpact(oneFragSamples, 2, { atUtc: epochIso });
+    expect(hitWithEpoch).toEqual({
+      timeMs: startMs,
+      position: [6_871_000, -120_000, 310_000],
+    });
+    const hitConfirmed = detectImpact(oneFragSamples, 2, { confirmed: true });
+    expect(hitConfirmed).toEqual({
+      timeMs: startMs,
+      position: [6_871_000, -120_000, 310_000],
+    });
+  });
   it("prefers authoritative impact epoch and ITRS-meter position when coordinated from TASK-003", () => {
     const firstFrameSamples: FrameSample[] = [
-      sample(Date.parse("2026-11-21T12:00:00Z"), ["FRAG-1", "FRAG-2"]),
-      sample(Date.parse("2026-11-21T12:01:00Z"), ["FRAG-1", "FRAG-2"]),
+      sample(Date.parse("2026-11-21T12:00:00Z"), ["FRAG-1"]),
+      sample(Date.parse("2026-11-21T12:01:00Z"), ["FRAG-1"]),
     ];
     const hit = detectImpact(firstFrameSamples, 2, {
       atUtc: "2026-11-21T12:00:00Z",
@@ -109,6 +140,73 @@ describe("detectImpact", () => {
   });
   it("finds the impact in the synthetic fixture", () => {
     expect(detectImpact(syntheticFrames())).not.toBeNull();
+  });
+});
+
+describe("scenario completion handoff contract", () => {
+  it("normalizes camelCase, snake_case, and job envelope payloads", () => {
+    expect(
+      normalizeScenarioHandoff({
+        scenarioId: "run-1",
+        seed: 42,
+        impact: {
+          atUtc: "2026-11-21T12:00:00Z",
+          position: [6_900_000, 0, 0],
+        },
+      }),
+    ).toEqual({
+      scenarioId: "run-1",
+      seed: 42,
+      impact: {
+        atUtc: "2026-11-21T12:00:00Z",
+        position: [6_900_000, 0, 0],
+        confirmed: true,
+      },
+    });
+
+    expect(
+      normalizeScenarioHandoff({
+        job: { scenario_id: "run-2", seed: 99, state: "completed" },
+        epoch_utc: "2026-11-21T13:00:00Z",
+        impact_position_itrs_m: [7_000_000, 100_000, -50_000],
+      }),
+    ).toEqual({
+      scenarioId: "run-2",
+      seed: 99,
+      impact: {
+        atUtc: "2026-11-21T13:00:00Z",
+        position: [7_000_000, 100_000, -50_000],
+        confirmed: true,
+      },
+    });
+  });
+
+  it("ignores non-completed jobs and blank scenario IDs", () => {
+    expect(
+      normalizeScenarioHandoff({
+        job: { scenario_id: "run-3", seed: 1, state: "running" },
+      }),
+    ).toBeNull();
+    expect(normalizeScenarioHandoff({ scenarioId: "   " })).toBeNull();
+  });
+
+  it("emits SCENARIO_COMPLETED_EVENT with normalized detail", () => {
+    const target = new EventTarget();
+    const received: unknown[] = [];
+    target.addEventListener(SCENARIO_COMPLETED_EVENT, (ev) => {
+      received.push((ev as CustomEvent).detail);
+    });
+    const emitted = emitScenarioCompleted(
+      {
+        scenario_id: "run-ev-1",
+        seed: 123,
+        epoch_utc: "2026-11-21T14:00:00Z",
+        impact_position_itrs_m: [6_800_000, 200_000, 300_000],
+      },
+      target,
+    );
+    expect(emitted?.scenarioId).toBe("run-ev-1");
+    expect(received).toEqual([emitted]);
   });
 });
 
@@ -273,6 +371,83 @@ describe("completed-run replay session integration", () => {
     const restored = driver.setPreviewing(false);
     expect(restored.provenance?.kind).toBe("HYPOTHETICAL_SIMULATION");
     expect(restored.positions.get("FRAG-A")).toEqual([7_000_000, 0, 0]);
+  });
+
+  it("activates replay from a completion handoff for a 1-fragment 121-frame 2-page run and exits synthetic preview", async () => {
+    const epochIso = "2026-11-21T12:00:00Z";
+    const startMs = Date.parse(epochIso);
+    const allSamples: FrameSample[] = Array.from({ length: 121 }, (_, i) => ({
+      at_utc: new Date(startMs + i * 60_000).toISOString(),
+      positions: [
+        {
+          object_id: "FRAG-SOLO",
+          position: [6_950_000 + i * 1_000, -80_000 + i * 500, 210_000],
+        },
+      ],
+    }));
+
+    const page1: FramePage = {
+      ...page(allSamples.slice(0, 100), "offset:100"),
+      scenario_id: "scen-one-frag",
+      sample_step_seconds: 60,
+    };
+    const page2: FramePage = {
+      ...page(allSamples.slice(100), null),
+      scenario_id: "scen-one-frag",
+      sample_step_seconds: 60,
+    };
+
+    const fakeFetch = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "/api/v1/scenarios/scen-one-frag/frames") {
+        return new Response(JSON.stringify(page1), { status: 200 });
+      }
+      if (
+        url === "/api/v1/scenarios/scen-one-frag/frames?cursor=offset%3A100"
+      ) {
+        return new Response(JSON.stringify(page2), { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    const onScenarioActivated = vi.fn();
+    // Start in synthetic preview mode with the uncompleted foundation demo bundle.
+    const driver = await createReplaySessionDriver({
+      loadStatus: "ready",
+      demo: demoFixture as unknown as DemoBundle,
+      previewing: true,
+      options: { fetchImpl: fakeFetch, onScenarioActivated },
+    });
+    expect(driver.snapshot().previewing).toBe(true);
+
+    // TASK-003 completes a max_resolved_fragments: 1 run and hands off its ID, seed, and epoch.
+    const active = await driver.completeScenario({
+      job: { scenario_id: "scen-one-frag", seed: 777, state: "completed" },
+      epoch_utc: epochIso,
+    });
+
+    expect(onScenarioActivated).toHaveBeenCalledTimes(1);
+    expect(active.previewing).toBe(false);
+    expect(active.completedScenarioId).toBe("scen-one-frag");
+    expect(active.seed).toBe(777);
+    expect(active.framesState.status).toBe("ready");
+    expect(active.hasImpact).toBe(true);
+    expect(active.impact).toEqual({
+      position: [6_950_000, -80_000, 210_000],
+      seed: 777,
+      ageMs: 0,
+    });
+    expect(active.focusToken).toBe(1);
+
+    // Scrub to frame 120 (page 2), then reset back to frame 0 (page 1).
+    const atEnd = driver.seek(startMs + 120 * 60_000);
+    expect(atEnd.positions.get("FRAG-SOLO")).toEqual([
+      7_070_000, -20_000, 210_000,
+    ]);
+    const afterReset = driver.reset();
+    expect(afterReset.positions.get("FRAG-SOLO")).toEqual([
+      6_950_000, -80_000, 210_000,
+    ]);
   });
 });
 

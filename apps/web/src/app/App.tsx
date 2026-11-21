@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import ReplayBar from "../timeline/ReplayBar";
 import {
   type DemoBundle,
@@ -9,6 +17,7 @@ import {
 } from "./demo";
 import {
   type ReplaySessionOptions,
+  type ScenarioCompletionCallback,
   useReplaySession,
 } from "./useReplaySession";
 
@@ -16,7 +25,14 @@ const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
-export function App(props: { replayOptions?: ReplaySessionOptions } = {}) {
+export function App(
+  props: {
+    replayOptions?: ReplaySessionOptions;
+    renderScenarioPanel?: (
+      onScenarioCompleted: ScenarioCompletionCallback,
+    ) => ReactNode;
+  } = {},
+) {
   const [previewing, setPreviewing] = useState(false);
   const [lowGraphics, setLowGraphics] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "loading" });
@@ -28,11 +44,26 @@ export function App(props: { replayOptions?: ReplaySessionOptions } = {}) {
     (sample) => sample.object_id === selectedId,
   );
 
+  const onScenarioActivated = useCallback(() => {
+    setPreviewing(false);
+  }, []);
+
+  const replayOptions = useMemo<ReplaySessionOptions>(
+    () => ({
+      ...props.replayOptions,
+      onScenarioActivated: (run) => {
+        onScenarioActivated();
+        props.replayOptions?.onScenarioActivated?.(run);
+      },
+    }),
+    [props.replayOptions, onScenarioActivated],
+  );
+
   const session = useReplaySession(
     state.status,
     demo,
     previewing,
-    props.replayOptions,
+    replayOptions,
   );
 
   useEffect(() => {
@@ -165,6 +196,7 @@ export function App(props: { replayOptions?: ReplaySessionOptions } = {}) {
               <p>Select an object to see its example position.</p>
             )}
           </div>
+          {props.renderScenarioPanel?.(session.onScenarioCompleted)}
         </aside>
       </main>
       <footer>

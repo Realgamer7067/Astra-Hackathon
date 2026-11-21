@@ -24,9 +24,26 @@ import {
   type FrameSample,
   type Vec3,
 } from "../timeline/interpolation";
+import {
+  type CompletedScenarioHandoff,
+  emitScenarioCompleted,
+  normalizeScenarioHandoff,
+  SCENARIO_COMPLETED_EVENT,
+  type ScenarioCompletionCallback,
+  type ScenarioCompletionInput,
+} from "../timeline/scenarioHandoff";
 import { syntheticFrames } from "../timeline/syntheticFrames";
 import { useReplay } from "../timeline/useReplay";
 import type { DemoBundle } from "./demo";
+
+export {
+  emitScenarioCompleted,
+  normalizeScenarioHandoff,
+  SCENARIO_COMPLETED_EVENT,
+  type CompletedScenarioHandoff,
+  type ScenarioCompletionCallback,
+  type ScenarioCompletionInput,
+};
 
 const NO_FRAMES: FrameSample[] = [];
 export const SYNTHETIC_SEED = 20260101;
@@ -42,17 +59,15 @@ export const syntheticProvenance: Provenance = {
   coordinateFrame: "ITRS",
 };
 
-export type CompletedRunInput = {
-  scenarioId: string;
-  seed?: number;
-  impact?: AuthoritativeImpact | null;
-};
+export type CompletedRunInput = CompletedScenarioHandoff;
 
 export type ReplaySessionOptions = {
   scenarioId?: string | null;
   seed?: number;
   impact?: AuthoritativeImpact | null;
   fetchImpl?: typeof fetch;
+  /** Invoked when a completed collision handoff activates replay (e.g. to exit preview). */
+  onScenarioActivated?: (run: CompletedScenarioHandoff) => void;
 };
 
 export type LoadedScenarioFrames = {
@@ -72,11 +87,13 @@ function initialUrlScenarioId(): string | null {
 export function resolveCompletedScenarioId(
   demo: DemoBundle | undefined,
   options?: ReplaySessionOptions,
-  eventRun?: CompletedRunInput | null,
+  eventRun?: CompletedScenarioHandoff | null,
+  urlScenarioId?: string | null,
 ): string | null {
   return (
-    options?.scenarioId ??
     eventRun?.scenarioId ??
+    options?.scenarioId ??
+    urlScenarioId ??
     (demo?.job.state === "completed" ? demo.job.scenario_id : null)
   );
 }
@@ -127,11 +144,16 @@ export function resolveAuthoritativeImpact(
   completedScenarioId: string | null,
   fetchedPage: FramePage | undefined,
   options?: ReplaySessionOptions,
-  eventRun?: CompletedRunInput | null,
+  eventRun?: CompletedScenarioHandoff | null,
 ): AuthoritativeImpact | null {
   if (previewing) return null;
-  const explicit = options?.impact ?? eventRun?.impact;
-  if (explicit) return explicit;
+  const confirmed =
+    Boolean(completedScenarioId) ||
+    fetchedPage?.provenance.kind === "HYPOTHETICAL_SIMULATION";
+  const explicit = eventRun?.impact ?? options?.impact;
+  if (explicit) {
+    return { confirmed, ...explicit };
+  }
   const atUtc =
     (demo?.job.scenario_id === completedScenarioId
       ? demo?.scenario.epoch_utc
@@ -139,13 +161,14 @@ export function resolveAuthoritativeImpact(
     fetchedPage?.provenance.sourceEpochUtc ??
     demo?.frames.provenance.sourceEpochUtc ??
     null;
-  return atUtc ? { atUtc } : null;
+  if (!atUtc && !confirmed) return null;
+  return { atUtc, confirmed };
 }
 
 /**
  * Headless integration driver for a replay session. Shares the exact frame
- * loader, clock, interpolation, impact detector, and mode-switching logic used
- * by the useReplaySession React hook.
+ * loader, completion handoff, clock, interpolation, impact detector, and
+ * mode-switching logic used by the useReplaySession React hook.
  */
 export async function createReplaySessionDriver(params: {
   loadStatus?: "loading" | "error" | "ready";
@@ -158,16 +181,9 @@ export async function createReplaySessionDriver(params: {
   const loadStatus = params.loadStatus ?? "ready";
   const demo = params.demo;
   const options = params.options;
-  const completedScenarioId = resolveCompletedScenarioId(demo, options, null);
+  let eventRun: CompletedScenarioHandoff | null = null;
+  let completedScenarioId = resolveCompletedScenarioId(demo, options, eventRun);
   let fetchedFrames: LoadedScenarioFrames | null = null;
-
-  if (completedScenarioId) {
-    fetchedFrames = await loadScenarioFrames(
-      completedScenarioId,
-      new AbortController().signal,
-      options?.fetchImpl ?? fetch,
-    );
-  }
 
   const currentSamples = (): FrameSample[] => {
     if (previewing) return synthetic;
@@ -180,12 +196,9 @@ export async function createReplaySessionDriver(params: {
     return state.status === "ready" ? state.samples : NO_FRAMES;
   };
 
-  let samples = currentSamples();
-  let times = sampleTimes(samples);
-  let clock: ClockState = createClock(
-    times[0] ?? 0,
-    times[times.length - 1] ?? 0,
-  );
+  let samples: FrameSample[] = [];
+  let times: number[] = [];
+  let clock: ClockState = createClock(0, 0);
   let focusToken = 0;
   let focused = false;
 
@@ -199,7 +212,7 @@ export async function createReplaySessionDriver(params: {
         completedScenarioId,
         fetchedFrames?.page,
         options,
-        null,
+        eventRun,
       ),
     );
 
@@ -213,7 +226,23 @@ export async function createReplaySessionDriver(params: {
       focusToken += 1;
     }
   };
-  syncFocus();
+
+  const resetTimelineForSamples = () => {
+    samples = currentSamples();
+    times = sampleTimes(samples);
+    clock = createClock(times[0] ?? 0, times[times.length - 1] ?? 0);
+    focused = false;
+    syncFocus();
+  };
+
+  if (completedScenarioId) {
+    fetchedFrames = await loadScenarioFrames(
+      completedScenarioId,
+      new AbortController().signal,
+      options?.fetchImpl ?? fetch,
+    );
+  }
+  resetTimelineForSamples();
 
   const snapshot = () => {
     const framesState = resolveFramesState(
@@ -231,7 +260,7 @@ export async function createReplaySessionDriver(params: {
         : Math.floor(rawAge / BURST_STEP_MS) * BURST_STEP_MS;
     const seed = previewing
       ? SYNTHETIC_SEED
-      : (options?.seed ?? demo?.job.seed ?? 0);
+      : (eventRun?.seed ?? options?.seed ?? demo?.job.seed ?? 0);
     const positions: Map<string, Vec3> = interpolateFrames(
       samples,
       times,
@@ -247,6 +276,7 @@ export async function createReplaySessionDriver(params: {
       positions,
       framesState,
       completedScenarioId,
+      seed,
       site,
       impact: site ? { position: site.position, seed, ageMs } : undefined,
       hasImpact: site !== null,
@@ -257,8 +287,25 @@ export async function createReplaySessionDriver(params: {
     };
   };
 
+  const completeScenario = async (input: ScenarioCompletionInput) => {
+    const handoff = normalizeScenarioHandoff(input);
+    if (!handoff) return snapshot();
+    eventRun = handoff;
+    completedScenarioId = resolveCompletedScenarioId(demo, options, eventRun);
+    previewing = false;
+    options?.onScenarioActivated?.(handoff);
+    fetchedFrames = await loadScenarioFrames(
+      handoff.scenarioId,
+      new AbortController().signal,
+      options?.fetchImpl ?? fetch,
+    );
+    resetTimelineForSamples();
+    return snapshot();
+  };
+
   return {
     snapshot,
+    completeScenario,
     play: () => {
       clock = playClock(clock);
       syncFocus();
@@ -289,11 +336,7 @@ export async function createReplaySessionDriver(params: {
     },
     setPreviewing: (next: boolean) => {
       previewing = next;
-      samples = currentSamples();
-      times = sampleTimes(samples);
-      clock = createClock(times[0] ?? 0, times[times.length - 1] ?? 0);
-      focused = false;
-      syncFocus();
+      resetTimelineForSamples();
       return snapshot();
     },
     focusImpact: () => {
@@ -306,9 +349,12 @@ export async function createReplaySessionDriver(params: {
 /**
  * Connects completed collision runs to GET /api/v1/scenarios/{id}/frames via
  * fetchAllFrames(), while keeping the synthetic preview as an explicit separate
- * mode. Coordinates authoritative impact epoch/position with TASK-003 (including
- * first-frame impact where sample 0 already contains all fragments) and focuses
- * the camera when playback reaches impact.
+ * mode. Accepts completed runs via:
+ * - `onScenarioCompleted` callback returned by this hook (for direct React wiring),
+ * - `emitScenarioCompleted(...)` / `astra:scenario-completed` window event,
+ * - `options.scenarioId` prop updates,
+ * - `?scenario_id=...` URL parameter, or
+ * - `demo.job.state === "completed"`.
  */
 export function useReplaySession(
   loadStatus: "loading" | "error" | "ready",
@@ -317,32 +363,59 @@ export function useReplaySession(
   options?: ReplaySessionOptions,
 ) {
   const synthetic = useMemo(() => syntheticFrames(), []);
-  const [eventRun, setEventRun] = useState<CompletedRunInput | null>(() => {
-    const fromUrl = initialUrlScenarioId();
-    return fromUrl ? { scenarioId: fromUrl } : null;
-  });
+  const [urlScenarioId] = useState<string | null>(() => initialUrlScenarioId());
+  const [eventRun, setEventRun] = useState<CompletedScenarioHandoff | null>(
+    null,
+  );
   const [fetchAttempt, setFetchAttempt] = useState(0);
   const [fetchedFrames, setFetchedFrames] =
     useState<LoadedScenarioFrames | null>(null);
 
+  const onActivatedRef = useRef(options?.onScenarioActivated);
+  onActivatedRef.current = options?.onScenarioActivated;
+
+  const optionScenarioId = options?.scenarioId ?? null;
+  const previousOptionScenarioId = useRef<string | null>(optionScenarioId);
+  useEffect(() => {
+    if (optionScenarioId === previousOptionScenarioId.current) return;
+    previousOptionScenarioId.current = optionScenarioId;
+    if (optionScenarioId) {
+      setEventRun(null);
+      onActivatedRef.current?.({
+        scenarioId: optionScenarioId,
+        seed: options?.seed,
+        impact: options?.impact,
+      });
+    }
+  }, [optionScenarioId, options?.seed, options?.impact]);
+
+  const onScenarioCompleted = useCallback<ScenarioCompletionCallback>(
+    (input) => {
+      const handoff = normalizeScenarioHandoff(input);
+      if (!handoff) return;
+      setEventRun(handoff);
+      onActivatedRef.current?.(handoff);
+    },
+    [],
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onCompleted = (event: Event) => {
-      const detail = (event as CustomEvent<CompletedRunInput | undefined>)
+      const detail = (event as CustomEvent<ScenarioCompletionInput | undefined>)
         .detail;
-      if (detail?.scenarioId) {
-        setEventRun(detail);
-      }
+      if (detail) onScenarioCompleted(detail);
     };
-    window.addEventListener("astra:scenario-completed", onCompleted);
+    window.addEventListener(SCENARIO_COMPLETED_EVENT, onCompleted);
     return () =>
-      window.removeEventListener("astra:scenario-completed", onCompleted);
-  }, []);
+      window.removeEventListener(SCENARIO_COMPLETED_EVENT, onCompleted);
+  }, [onScenarioCompleted]);
 
   const completedScenarioId = resolveCompletedScenarioId(
     demo,
     options,
     eventRun,
+    urlScenarioId,
   );
   const fetchImpl = options?.fetchImpl ?? fetch;
 
@@ -368,9 +441,16 @@ export function useReplaySession(
     setFetchAttempt((n) => n + 1);
   }, []);
 
-  const loadScenario = useCallback((run: CompletedRunInput | null) => {
-    setEventRun(run);
-  }, []);
+  const loadScenario = useCallback(
+    (run: ScenarioCompletionInput | null) => {
+      if (!run) {
+        setEventRun(null);
+        return;
+      }
+      onScenarioCompleted(run);
+    },
+    [onScenarioCompleted],
+  );
 
   const framesState = resolveFramesState(
     loadStatus,
@@ -420,7 +500,7 @@ export function useReplaySession(
     rawAge === null ? null : Math.floor(rawAge / BURST_STEP_MS) * BURST_STEP_MS;
   const seed = previewing
     ? SYNTHETIC_SEED
-    : (options?.seed ?? eventRun?.seed ?? demo?.job.seed ?? 0);
+    : (eventRun?.seed ?? options?.seed ?? demo?.job.seed ?? 0);
   const impact = useMemo(
     () => (site ? { position: site.position, seed, ageMs } : undefined),
     [site, seed, ageMs],
@@ -456,6 +536,7 @@ export function useReplaySession(
     focusImpact: () => setFocusToken((n) => n + 1),
     retryFrames,
     loadScenario,
+    onScenarioCompleted,
     provenance,
     replayable: previewing || framesState.status === "ready",
   };
