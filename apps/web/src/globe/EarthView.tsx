@@ -7,6 +7,7 @@ import {
   Credit,
   CreditDisplay,
   ImageryLayer,
+  PointPrimitive,
   PointPrimitiveCollection,
   TileMapServiceImageryProvider,
 } from "cesium";
@@ -21,6 +22,8 @@ type Props = {
   states?: CartesianState[];
   objects?: CatalogObject[];
   selectedId: string | null;
+  /** Interpolated replay positions (ITRS metres). */
+  replayPositions?: Map<string, [number, number, number]>;
 };
 
 function reset(widget: CesiumWidget) {
@@ -30,7 +33,14 @@ function reset(widget: CesiumWidget) {
   widget.scene.requestRender();
 }
 
-export default function EarthView({ states, objects, selectedId }: Props) {
+export default function EarthView({
+  states,
+  objects,
+  selectedId,
+  replayPositions,
+}: Props) {
+  const replayCollection = useRef<PointPrimitiveCollection | null>(null);
+  const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
   const host = useRef<HTMLDivElement>(null);
   const widget = useRef<CesiumWidget | null>(null);
   const points = useRef<PointPrimitiveCollection | null>(null);
@@ -81,6 +91,8 @@ export default function EarthView({ states, objects, selectedId }: Props) {
     return () => {
       removeError();
       points.current = null;
+      replayCollection.current = null;
+      replayPoints.current.clear();
       widget.current = null;
       instance.destroy();
     };
@@ -124,6 +136,35 @@ export default function EarthView({ states, objects, selectedId }: Props) {
     });
     instance.scene.requestRender();
   }, [states, selectedId]);
+
+  useEffect(() => {
+    const collection = replayCollection.current;
+    const live = replayPoints.current;
+    if (!collection) return;
+    for (const [id, point] of live) {
+      if (!replayPositions?.has(id)) {
+        collection.remove(point);
+        live.delete(id);
+      }
+    }
+    for (const [id, position] of replayPositions ?? []) {
+      const cartesian = Cartesian3.fromArray(position);
+      const existing = live.get(id);
+      if (existing) existing.position = cartesian;
+      else
+        live.set(
+          id,
+          collection.add({
+            position: cartesian,
+            color: Color.fromCssColorString("#ffb454"),
+            pixelSize: 8,
+            outlineColor: Color.WHITE,
+            outlineWidth: 1,
+          }),
+        );
+    }
+    widget.current?.scene.requestRender();
+  }, [replayPositions]);
 
   function zoom(direction: "in" | "out") {
     const instance = widget.current;

@@ -1,4 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import TimelineControls from "../timeline/TimelineControls";
+import { syntheticFrames } from "../timeline/syntheticFrames";
+import { useReplay } from "../timeline/useReplay";
 import {
   type DemoBundle,
   kindColors,
@@ -11,7 +14,12 @@ const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
+const NO_FRAMES: ReturnType<typeof syntheticFrames> = [];
+
 export function App() {
+  const [previewing, setPreviewing] = useState(false);
+  const synthetic = useMemo(() => syntheticFrames(), []);
+  const replay = useReplay(previewing ? synthetic : NO_FRAMES);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,6 +78,24 @@ export function App() {
           <div className="scene-label">
             <h1 id="scene-title">Earth orbit</h1>
             <p>{demo ? utcLabel(demo.states.at_utc) : "Awaiting a snapshot"}</p>
+          </div>
+          <div className="replay-bar">
+            <label className="preview-toggle">
+              <input
+                type="checkbox"
+                checked={previewing}
+                onChange={(e) => setPreviewing(e.target.checked)}
+              />
+              Synthetic replay preview
+            </label>
+            {previewing && (
+              <>
+                <p className="synthetic-badge" role="note">
+                  SYNTHETIC DEMO � illustrative motion, not a simulation result
+                </p>
+                <TimelineControls replay={replay} label="synthetic" />
+              </>
+            )}
           </div>
           <small className="credit">Natural Earth</small>
         </section>
