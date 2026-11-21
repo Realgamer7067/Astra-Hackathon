@@ -16,10 +16,33 @@ from dataclasses import dataclass, field
 from .screening import StateVector
 
 # ---------------------------------------------------------------------------
-# Constants
+# Constants & Coordinate Transformations
 # ---------------------------------------------------------------------------
 R_EARTH_KM = 6378.137
 ENTRY_THRESHOLD_KM = 120.0  # default atmospheric entry threshold
+EARTH_ROTATION_RATE_RAD_S = 7.2921159e-5  # WGS-84 Earth angular velocity (rad/s)
+
+
+def gmst_rad(epoch_s: float, gmst0_rad: float = 0.0) -> float:
+    """Greenwich Mean Sidereal Time in radians at epoch_s seconds from scenario epoch."""
+    return (gmst0_rad + EARTH_ROTATION_RATE_RAD_S * epoch_s) % (2.0 * math.pi)
+
+
+def gcrs_to_itrs(
+    x_km: float, y_km: float, z_km: float, theta_rad: float
+) -> tuple[float, float, float]:
+    """Transform inertial GCRS coordinates to Earth-fixed ITRS via Earth rotation angle theta.
+
+    [x_itrs]   [ cos(theta)   sin(theta)  0 ] [x_gcrs]
+    [y_itrs] = [-sin(theta)   cos(theta)  0 ] [y_gcrs]
+    [z_itrs]   [     0            0       1 ] [z_gcrs]
+    """
+    cos_t = math.cos(theta_rad)
+    sin_t = math.sin(theta_rad)
+    x_itrs = cos_t * x_km + sin_t * y_km
+    y_itrs = -sin_t * x_km + cos_t * y_km
+    z_itrs = z_km
+    return x_itrs, y_itrs, z_itrs
 
 
 # ---------------------------------------------------------------------------
@@ -143,16 +166,27 @@ def compute_occupancy(
 
 def compute_ground_projections(
     fragment_states: Sequence[StateVector],
+    gmst0_rad: float = 0.0,
+    is_inertial: bool = True,
 ) -> list[GroundProjection]:
     """Compute sub-satellite ground projections for all fragment states.
 
-    These are orbital projections ONLY.  They are computed independently
-    from entry-crossing flags.  A ground projection does NOT imply
+    If ``is_inertial=True`` (default), states in GCRS are transformed to Earth-fixed
+    ITRS coordinates accounting for Earth rotation at each sample's ``epoch_s``.
+
+    These are orbital projections ONLY. They are computed independently
+    from entry-crossing flags. A ground projection does NOT imply
     atmospheric entry or surface impact.
     """
     projections: list[GroundProjection] = []
     for sv in fragment_states:
-        lat, lon, alt = _ecef_to_geodetic(sv.x, sv.y, sv.z)
+        if is_inertial:
+            theta = gmst_rad(sv.epoch_s, gmst0_rad)
+            x_itrs, y_itrs, z_itrs = gcrs_to_itrs(sv.x, sv.y, sv.z, theta)
+        else:
+            x_itrs, y_itrs, z_itrs = sv.x, sv.y, sv.z
+
+        lat, lon, alt = _ecef_to_geodetic(x_itrs, y_itrs, z_itrs)
         projections.append(
             GroundProjection(
                 fragment_id=sv.object_id,
@@ -173,10 +207,13 @@ def compute_ground_projections(
 def detect_entry_crossings(
     fragment_time_series: dict[str, list[StateVector]],
     threshold_km: float = ENTRY_THRESHOLD_KM,
+    gmst0_rad: float = 0.0,
+    is_inertial: bool = True,
 ) -> list[EntryCrossing]:
     """Detect fragments whose altitude crosses below ``threshold_km``.
 
     Only the first downward crossing per fragment is recorded.
+    Coordinates are transformed to Earth-fixed ITRS at the crossing epoch.
     Entry crossings are determined solely from altitude trajectory,
     NOT from ground projections.
     """
@@ -187,7 +224,13 @@ def detect_entry_crossings(
         for sv in sorted_states:
             alt = _altitude_km(sv)
             if prev_alt is not None and prev_alt >= threshold_km and alt < threshold_km:
-                lat, lon, _ = _ecef_to_geodetic(sv.x, sv.y, sv.z)
+                if is_inertial:
+                    theta = gmst_rad(sv.epoch_s, gmst0_rad)
+                    x_itrs, y_itrs, z_itrs = gcrs_to_itrs(sv.x, sv.y, sv.z, theta)
+                else:
+                    x_itrs, y_itrs, z_itrs = sv.x, sv.y, sv.z
+
+                lat, lon, _ = _ecef_to_geodetic(x_itrs, y_itrs, z_itrs)
                 crossings.append(
                     EntryCrossing(
                         fragment_id=frag_id,
@@ -212,15 +255,23 @@ def summarize_exposure(
     fragment_time_series: dict[str, list[StateVector]] | None = None,
     bin_size_km: float = 100.0,
     entry_threshold_km: float = ENTRY_THRESHOLD_KM,
+    gmst0_rad: float = 0.0,
+    is_inertial: bool = True,
+    known_entry_crossings: list[EntryCrossing] | None = None,
 ) -> ExposureSummary:
     """Compute the full exposure summary from fragment simulation data.
 
     Args:
         fragment_states: Flat list of all fragment state vectors (any epoch).
         fragment_time_series: Per-fragment ordered time series for entry
-            crossing detection.  If None, entry crossings are skipped.
+            crossing detection. If None, entry crossings are skipped unless
+            known_entry_crossings is provided.
         bin_size_km: Altitude bin width for occupancy computation.
         entry_threshold_km: Altitude threshold for entry crossing detection.
+        gmst0_rad: Initial Greenwich Mean Sidereal Time in radians at epoch_s=0.
+        is_inertial: Whether input StateVectors are in inertial GCRS (requiring
+            ITRS rotation for geographic projections).
+        known_entry_crossings: Direct crossings from the simulation engine to reuse.
 
     Returns:
         An ``ExposureSummary`` with occupancy, projections, and crossings.
@@ -230,15 +281,24 @@ def summarize_exposure(
     summary.total_fragments_screened = len(unique_frags)
 
     summary.occupancy = compute_occupancy(fragment_states, bin_size_km)
-    summary.ground_projections = compute_ground_projections(fragment_states)
+    summary.ground_projections = compute_ground_projections(
+        fragment_states, gmst0_rad=gmst0_rad, is_inertial=is_inertial
+    )
 
-    if fragment_time_series is not None:
-        summary.entry_crossings = detect_entry_crossings(fragment_time_series, entry_threshold_km)
+    if known_entry_crossings is not None:
+        summary.entry_crossings = known_entry_crossings
+    elif fragment_time_series is not None:
+        summary.entry_crossings = detect_entry_crossings(
+            fragment_time_series,
+            threshold_km=entry_threshold_km,
+            gmst0_rad=gmst0_rad,
+            is_inertial=is_inertial,
+        )
 
     summary.provenance_notes = [
         f"Occupancy bins: {bin_size_km} km shells",
         f"Entry threshold: {entry_threshold_km} km",
-        "Ground projections are orbital sub-satellite points only — not impact predictions",
+        "Ground projections are orbital sub-satellite points in Earth-fixed ITRS — not impact predictions",
         f"Fragments screened: {summary.total_fragments_screened}",
     ]
 

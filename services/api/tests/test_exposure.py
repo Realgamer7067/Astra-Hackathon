@@ -150,6 +150,47 @@ class TestScreeningBroadPhaseVsBruteForce:
         assert len(result.encounters) <= 5
         assert result.truncated
 
+    def test_interior_minimum_between_samples(self):
+        """Objects far apart at sample endpoints but crossing close in-between must be detected."""
+        # Frag at x= -100 at t=0, x= +100 at t=10; y=0, z=0
+        # Cand at y= -100 at t=0, y= +100 at t=10; x=0, z=0
+        # At t=0: sep = sqrt((-100)^2 + (100)^2) = 141.42 km (outside 100km threshold!)
+        # At t=10: sep = sqrt((100)^2 + (-100)^2) = 141.42 km (outside 100km threshold!)
+        # At t=5: frag at (0,0,0), cand at (0,0,0) -> separation = 0 km!
+        r_base = R_EARTH_KM + 400.0
+        f0 = _sv_xyz("frag-int", 0.0, r_base - 100.0, 0.0, 0.0)
+        f1 = _sv_xyz("frag-int", 10.0, r_base + 100.0, 0.0, 0.0)
+
+        c0 = _sv_xyz("cand-int", 0.0, r_base, -100.0, 0.0)
+        c1 = _sv_xyz("cand-int", 10.0, r_base, 100.0, 0.0)
+
+        frags = [f0, f1]
+        cands = [c0, c1]
+
+        result = screen_encounters(frags, cands, ScreeningLimits(refine_threshold_km=100.0))
+        assert len(result.encounters) == 1
+        enc = result.encounters[0]
+        assert enc.separation_km < 1.0  # accurately detected close approach at midpoint
+        assert abs(enc.epoch_s - 5.0) < 0.1
+
+    def test_real_near_miss_interval_refinement(self):
+        """Relative-motion interval refinement correctly detects a non-zero near miss."""
+        r_base = R_EARTH_KM + 500.0
+        # Frag moves along x: -50 to +50 km, offset z = 12 km
+        # Cand stationary at (r_base, 0, 0)
+        # Endpoints separation: sqrt(50^2 + 12^2) = 51.42 km
+        # Interior minimum at t=5: separation = 12 km
+        f0 = _sv_xyz("frag-nm", 0.0, r_base - 50.0, 0.0, 12.0)
+        f1 = _sv_xyz("frag-nm", 10.0, r_base + 50.0, 0.0, 12.0)
+
+        c0 = _sv_xyz("cand-nm", 0.0, r_base, 0.0, 0.0)
+        c1 = _sv_xyz("cand-nm", 10.0, r_base, 0.0, 0.0)
+
+        result = screen_encounters([f0, f1], [c0, c1])
+        assert len(result.encounters) == 1
+        assert abs(result.encounters[0].separation_km - 12.0) < 1e-4
+        assert abs(result.encounters[0].epoch_s - 5.0) < 1e-4
+
     def test_empty_inputs(self):
         result = screen_encounters([], [])
         assert result.encounters == []
@@ -217,6 +258,32 @@ class TestGroundProjections:
         projections = compute_ground_projections(states)
         assert len(projections) == 1
         assert projections[0].altitude_km > 700  # far above 120 km entry
+
+    def test_earth_rotation_longitude_at_known_epoch(self):
+        """GCRS to ITRS transformation rotates longitude by Earth's rotation angle."""
+        # Satellite on GCRS +X axis: lat=0, lon_gcrs=0
+        # After 6 hours (21600 s), Earth rotates 90 degrees eastward.
+        # In ITRS (Earth-fixed), longitude should be -90 deg (or 270 deg).
+        r = R_EARTH_KM + 500.0
+        dt_s = 21600.0  # 6 hours
+        expected_theta_rad = (7.2921159e-5 * dt_s) % (2.0 * math.pi)
+        expected_lon_deg = math.degrees(-expected_theta_rad)
+
+        sv = StateVector(
+            object_id="f-rot",
+            epoch_s=dt_s,
+            x=r,
+            y=0.0,
+            z=0.0,
+            vx=0.0,
+            vy=0.0,
+            vz=0.0,
+        )
+        projections = compute_ground_projections([sv], gmst0_rad=0.0, is_inertial=True)
+        assert len(projections) == 1
+        p = projections[0]
+        assert abs(p.latitude_deg) < 1e-4
+        assert abs(p.longitude_deg - expected_lon_deg) < 1e-4
 
 
 # ===========================================================================
@@ -483,3 +550,127 @@ class TestResultsAPI:
             assert "source" in prov
             assert "assumptions" in prov
             assert "limitations" in prov
+
+    def test_computed_run_data_used_in_results_and_report(self):
+        """Computed runs (TASK-003) stored in app.state.runs are returned correctly."""
+        from app.main import create_app
+        from app.models.wire import (
+            CartesianState,
+            CloseApproach,
+            ForcedModification,
+            InertialState,
+            OccupancyBin,
+            Provenance,
+            ScenarioRequest,
+            ScenarioResult,
+        )
+        from fastapi.testclient import TestClient
+
+        app = create_app()
+
+        computed_result = ScenarioResult(
+            schema_version="1.0",
+            generated_at_utc="2026-11-21T14:00:00Z",
+            scenario_id="computed-scenario-42",
+            resolved_fragment_count=128,
+            unresolved_mass_kg=12.5,
+            modification=ForcedModification(
+                original_state=InertialState(
+                    at_utc="2026-11-21T12:00:00Z",
+                    frame="GCRS",
+                    position_unit="km",
+                    velocity_unit="km/s",
+                    state=CartesianState(
+                        object_id="NORAD:11111",
+                        position=(7000.0, 0.0, 0.0),
+                        velocity=(0.0, 7.5, 0.0),
+                    ),
+                ),
+                modified_state=InertialState(
+                    at_utc="2026-11-21T12:00:00Z",
+                    frame="GCRS",
+                    position_unit="km",
+                    velocity_unit="km/s",
+                    state=CartesianState(
+                        object_id="NORAD:11111",
+                        position=(6999.0, 0.0, 0.0),
+                        velocity=(0.0, 7.5, 0.0),
+                    ),
+                ),
+                original_separation_km=1.0,
+            ),
+            occupancy=[
+                OccupancyBin(altitude_min_km=500.0, altitude_max_km=600.0, resolved_count=128)
+            ],
+            encounters=[
+                CloseApproach(
+                    catalog_object_id="NORAD:22222",
+                    fragment_id="frag-42",
+                    at_utc="2026-11-21T13:30:00Z",
+                    separation_km=8.45,
+                )
+            ],
+            entry_crossings=[],
+            provenance=Provenance(
+                kind="HYPOTHETICAL_SIMULATION",
+                mode="LIVE",
+                source="ASTRA Numerical Integrator",
+                catalogSnapshotId="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                modelVersion="v1.0.0",
+                coordinateFrame="GCRS",
+                assumptions=["J2 perturbation included"],
+                limitations=["No drag model"],
+            ),
+        )
+
+        computed_scenario = ScenarioRequest(
+            schema_version="1.0",
+            type="FORCED_HYPOTHETICAL",
+            epoch_utc="2026-11-21T12:00:00Z",
+            participants=[
+                {"object_id": "NORAD:11111", "assumed_mass_kg": 1000.0, "assumed_radius_m": 2.0},
+                {"object_id": "NORAD:99999", "assumed_mass_kg": 500.0, "assumed_radius_m": 1.5},
+            ],
+            forced_contact={"move_participant_index": 0, "impact_geometry": "CENTERED"},
+            simulation={
+                "seed": 99,
+                "duration_hours": 2.0,
+                "output_step_seconds": 60,
+                "max_resolved_fragments": 128,
+                "max_cascade_generations": 0,
+            },
+            requested_products=["TRAJECTORIES", "SECONDARY_ENCOUNTERS"],
+        )
+
+        app.state.runs = {
+            "computed-scenario-42": {
+                "result": computed_result,
+                "scenario": computed_scenario,
+            }
+        }
+
+        with TestClient(app) as test_client:
+            # 1. /results route returns the computed run
+            resp_results = test_client.get("/api/v1/scenarios/computed-scenario-42/results")
+            assert resp_results.status_code == 200
+            res_data = resp_results.json()
+            assert res_data["scenario_id"] == "computed-scenario-42"
+            assert res_data["resolved_fragment_count"] == 128
+            assert res_data["modification"]["original_separation_km"] == 1.0
+
+            # 2. /report route returns the computed run with seed, participants, modification
+            resp_report = test_client.get(
+                "/api/v1/scenarios/computed-scenario-42/report?format=json"
+            )
+            assert resp_report.status_code == 200
+            rep_data = resp_report.json()
+            assert rep_data["scenario_id"] == "computed-scenario-42"
+            assert rep_data["seed"] == 99
+            assert rep_data["sections"][0]["title"] == "Collision Participants"
+            assert rep_data["sections"][1]["title"] == "Forced State Modification"
+            assert rep_data["sections"][1]["content"]["original_separation_km"] == 1.0
+
+            # 3. Genuinely unknown scenario ID returns 404
+            resp_unknown = test_client.get("/api/v1/scenarios/unknown-9999/results")
+            assert resp_unknown.status_code == 404
+            assert resp_unknown.json()["error"]["code"] == "SCENARIO_NOT_FOUND"

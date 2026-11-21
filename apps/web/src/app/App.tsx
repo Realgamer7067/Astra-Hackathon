@@ -13,11 +13,17 @@ const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
-export function App() {
+export function App({
+  activeScenarioId,
+}: {
+  activeScenarioId?: string | null;
+}) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const demo = state.status === "ready" ? state.demo : undefined;
+  const currentScenarioId =
+    activeScenarioId ?? demo?.result.scenario_id ?? null;
   const selected = demo?.objects.find((object) => object.id === selectedId);
   const selectedState = demo?.states.states.find(
     (sample) => sample.object_id === selectedId,
@@ -139,7 +145,7 @@ export function App() {
               <p>Select an object to see its example position.</p>
             )}
           </div>
-          <ResultsPanel scenarioId={demo?.result.scenario_id ?? null} />
+          <ResultsPanel scenarioId={currentScenarioId} />
         </aside>
       </main>
       <footer>

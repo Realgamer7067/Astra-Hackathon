@@ -7,7 +7,7 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Query, Request, Response
@@ -17,6 +17,7 @@ from ..models.wire import (
     DemoBundle,
     ErrorDetail,
     ErrorEnvelope,
+    ScenarioRequest,
     ScenarioResult,
 )
 from ..services.report import build_report
@@ -26,6 +27,34 @@ router = APIRouter(prefix="/api/v1/scenarios", tags=["results"])
 
 def _get_demo(request: Request) -> DemoBundle | None:
     return cast(DemoBundle | None, getattr(request.app.state, "demo", None))
+
+
+def _get_scenario_data(
+    request: Request, scenario_id: str
+) -> tuple[ScenarioResult, ScenarioRequest | None] | None:
+    """Retrieve result and scenario data by scenario_id.
+
+    Checks app.state.runs (for dynamically computed / TASK-003 runs)
+    and falls back to app.state.demo if matching.
+    """
+    runs = getattr(request.app.state, "runs", {})
+    if scenario_id in runs:
+        run_data = runs[scenario_id]
+        if isinstance(run_data, tuple):
+            return cast(ScenarioResult, run_data[0]), cast(ScenarioRequest | None, run_data[1])
+        elif isinstance(run_data, dict):
+            res = cast(ScenarioResult | None, run_data.get("result"))
+            scen = cast(ScenarioRequest | None, run_data.get("scenario"))
+            if res is not None:
+                return res, scen
+        elif isinstance(run_data, ScenarioResult):
+            return run_data, None
+
+    demo = _get_demo(request)
+    if demo is not None and demo.result.scenario_id == scenario_id:
+        return demo.result, demo.scenario
+
+    return None
 
 
 def _error_response(code: str, message: str, status: int = 404) -> JSONResponse:
@@ -47,6 +76,10 @@ def _error_response(code: str, message: str, status: int = 404) -> JSONResponse:
 )
 def get_results(request: Request, scenario_id: str) -> ScenarioResult | JSONResponse:
     """Return the scenario result including occupancy, encounters, and entry crossings."""
+    data = _get_scenario_data(request, scenario_id)
+    if data is not None:
+        return data[0]
+
     demo = _get_demo(request)
     if demo is None:
         return _error_response(
@@ -54,12 +87,10 @@ def get_results(request: Request, scenario_id: str) -> ScenarioResult | JSONResp
             "The offline demo data is unavailable.",
             status=503,
         )
-    if demo.result.scenario_id != scenario_id:
-        return _error_response(
-            "SCENARIO_NOT_FOUND",
-            f"No results found for scenario '{scenario_id}'.",
-        )
-    return demo.result
+    return _error_response(
+        "SCENARIO_NOT_FOUND",
+        f"No results found for scenario '{scenario_id}'.",
+    )
 
 
 @router.get(
@@ -81,31 +112,38 @@ def get_report(
     Supports ``format=json`` (default) and ``format=markdown``.
     Hypothetical labels are preserved in all output formats.
     """
-    demo = _get_demo(request)
-    if demo is None:
-        return _error_response(
-            "DEMO_UNAVAILABLE",
-            "The offline demo data is unavailable.",
-            status=503,
-        )
-    if demo.result.scenario_id != scenario_id:
+    data = _get_scenario_data(request, scenario_id)
+    if data is None:
+        demo = _get_demo(request)
+        if demo is None:
+            return _error_response(
+                "DEMO_UNAVAILABLE",
+                "The offline demo data is unavailable.",
+                status=503,
+            )
         return _error_response(
             "SCENARIO_NOT_FOUND",
             f"No results found for scenario '{scenario_id}'.",
         )
 
-    result = demo.result
-    scenario = demo.scenario
+    result, scenario = data
 
-    # Build participants list from scenario
-    participants = [
-        {
-            "object_id": p.object_id,
-            "assumed_mass_kg": p.assumed_mass_kg,
-            "assumed_radius_m": p.assumed_radius_m,
-        }
-        for p in scenario.participants
-    ]
+    # Build participants list if scenario object is available
+    participants: list[dict[str, Any]] = []
+    scenario_type = "FORCED_HYPOTHETICAL"
+    seed = 42
+
+    if scenario is not None:
+        scenario_type = scenario.type
+        seed = scenario.simulation.seed
+        participants = [
+            {
+                "object_id": p.object_id,
+                "assumed_mass_kg": p.assumed_mass_kg,
+                "assumed_radius_m": p.assumed_radius_m,
+            }
+            for p in scenario.participants
+        ]
 
     # Serialize modification if present
     modification_dict = None
@@ -115,8 +153,8 @@ def get_report(
     # Build the report
     report = build_report(
         scenario_id=scenario_id,
-        scenario_type=scenario.type,
-        seed=scenario.simulation.seed,
+        scenario_type=scenario_type,
+        seed=seed,
         participants=participants,
         modification=modification_dict,
         occupancy=[b.model_dump(mode="json") for b in result.occupancy],

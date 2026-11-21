@@ -27,6 +27,8 @@ def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
         except (OSError, ValidationError):
             logger.warning("Offline demo fixture could not be loaded")
             app.state.demo = None
+        if not hasattr(app.state, "runs"):
+            app.state.runs = {}
         yield
 
     api = FastAPI(title="ASTRA Orbital Collision Lab", version=VERSION, lifespan=lifespan)
