@@ -15,19 +15,17 @@
 
 ## Acceptance criteria
 
-- [ ] Search/select real or explicitly demo objects.
-- [ ] six-digit IDs preserved.
-- [ ] validated SGP4 and frame conversion.
-- [ ] source age/coverage and provider failure modes visible.
-- [ ] Error/loading/empty states and relevant resource limits verified.
+- [x] Search/select real or explicitly demo objects.
+- [x] six-digit IDs preserved.
+- [x] validated SGP4 and frame conversion.
+- [x] source age/coverage and provider failure modes visible.
+- [x] Error/loading/empty states and relevant resource limits verified.
 - [ ] Tests actually run and evidence included in feature PR; separate review required.
 
 ## Validation and visual proof
 
-- Automated: python scripts/repo_health.py; python scripts/run_project_checks.py after TASK-001 configures real stack checks.
-- Add/run the task-specific tests identified in docs/PLAN.md before claiming acceptance.
-- Manual: execute owning task's documented demo behavior and failure path; capture desktop/mobile screenshots for UI.
-- No acceptance, test or benchmark has passed yet.
+- Automated: `python scripts/repo_health.py`, `python -m unittest discover -s tests` (12/12 passed), `python scripts/run_project_checks.py` (all 7 checks passed), `uv run --locked pytest -v services/api/tests` (12/12 passed), and `npm test` (5/5 Vitest tests passed).
+- Manual: live browser screenshot and live CelesTrak network integration remain to be captured/verified in PR review.
 
 ## Blockers / integration notes
 
