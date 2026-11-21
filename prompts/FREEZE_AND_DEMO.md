@@ -4,3 +4,7 @@ Read `docs/DEMO.md`, judging rubric and current deployed state. Stop proposing n
 
 Verify from actual evidence: production build, deployed URL, demo data, API credentials, backup recording, README, clean git state, attribution and official submission format. Write a 2–3 minute pitch and a judge Q&A cheat sheet. Never fabricate metrics or demo results. Announce the remaining risks plainly.
 
+
+## ASTRA project context
+
+For ASTRA follow docs/DEMO.md: freeze at hour 20 or earlier if integration slips. Prove offline collision/replay/exposure and truthful source/hypothetical labels before optional asteroids or cascades.

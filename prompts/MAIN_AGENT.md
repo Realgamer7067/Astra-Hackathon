@@ -24,3 +24,7 @@ Before work, read `AGENTS.md`, current approved documents, task board, and the u
 - Keep the scope limited enough for a reliable demo.
 - Call out dependencies and risks to your human promptly. The separate reviewer handles formal group-wide reviews when asked.
 
+
+## ASTRA project context
+
+Coordinate docs/PLAN.md, own TASK-001 and the user-requested collision lane B (TASK-003), preserve shared-file ownership, and promote dependent cards only after the foundation merges. Do not implement teammates’ lanes without coordination.

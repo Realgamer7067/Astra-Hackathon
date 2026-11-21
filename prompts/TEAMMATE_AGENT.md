@@ -13,3 +13,7 @@ Read `AGENTS.md`, approved brief/architecture/contracts, task directory, and the
 
 Never claim another teammate's work as your own or overwrite their uncommitted changes.
 
+
+## ASTRA project context
+
+Choose one unclaimed feature lane in docs/PLAN.md. Read its task card, PHYSICS/DATA_SOURCES/UX/LIMITATIONS as relevant, and use the shared schema-valid fixtures. Record real tests and request coordinator edits to shared registration/lockfiles.

@@ -54,3 +54,9 @@ If a document is still a template, say so. **Never hallucinate decisions as fina
 
 Working demo > broken extra features. Protect stability and integration time. Freeze features as described in `docs/DEMO.md`.
 
+
+## ASTRA project baseline
+
+The user-supplied concept is ASTRA Orbital Collision Lab. Read docs/PLAN.md for the four-person execution plan and docs/ASTRA_MASTER_PROMPT.md for the preserved specification. The recommended stack is now documented in docs/ARCHITECTURE.md; package versions and application commands remain unverified until TASK-001. Scientific requirements live in docs/PHYSICS.md, sourcing in docs/DATA_SOURCES.md, interaction in docs/UX.md, and qualifications in docs/LIMITATIONS.md.
+
+Never equate catalog estimates with live telemetry, ground tracks with impact warnings, cinematic particles with simulated debris, or target benchmarks with measured results. All forced collisions retain hypothetical provenance through the UI and report. Preserve the existing claim, branch, separate-review and protected-merge rules.
