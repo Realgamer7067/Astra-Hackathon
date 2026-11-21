@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { type DemoBundle, kindLabels } from "../../app/demo";
 import {
   cancelJob,
@@ -19,7 +20,13 @@ function message(error: unknown) {
     : "The simulation request failed.";
 }
 
-export function ScenarioLab({ demo }: { demo: DemoBundle }) {
+export function ScenarioLab({
+  demo,
+  demoActionHost,
+}: {
+  demo: DemoBundle;
+  demoActionHost?: HTMLElement | null;
+}) {
   const objects = demo.objects.filter((object) =>
     demo.states.states.some((state) => state.object_id === object.id),
   );
@@ -31,6 +38,7 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
   const [sampleIndex, setSampleIndex] = useState(0);
   const [pageCursor, setPageCursor] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [demoRun, setDemoRun] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [loadingPage, setLoadingPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,19 +63,6 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
       setError("Choose two distinct objects.");
       return;
     }
-    setBusy(true);
-    setError(null);
-    setSummary(null);
-    setPage(null);
-    setJob(null);
-    setPageCursor(undefined);
-    operation.current?.abort();
-    const controller = new AbortController();
-    operation.current = controller;
-    const signal = AbortSignal.any([
-      controller.signal,
-      AbortSignal.timeout(130000),
-    ]);
     const scenario: ScenarioRequest = {
       schema_version: "1.0",
       type: "FORCED_HYPOTHETICAL",
@@ -86,6 +81,24 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
       },
       requested_products: ["TRAJECTORIES", "ENTRY_CROSSINGS"],
     };
+    setDemoRun(false);
+    await runScenario(scenario);
+  }
+
+  async function runScenario(scenario: ScenarioRequest) {
+    setBusy(true);
+    setError(null);
+    setSummary(null);
+    setPage(null);
+    setJob(null);
+    setPageCursor(undefined);
+    operation.current?.abort();
+    const controller = new AbortController();
+    operation.current = controller;
+    const signal = AbortSignal.any([
+      controller.signal,
+      AbortSignal.timeout(130000),
+    ]);
     try {
       const initialJob = await startScenario(scenario, signal);
       const finished = await monitorJob(initialJob, signal, setJob);
@@ -120,6 +133,35 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
     }
   }
 
+  function runEntryDemo() {
+    setDemoRun(true);
+    void runScenario({
+      schema_version: "1.0",
+      type: "FORCED_HYPOTHETICAL",
+      epoch_utc: demo.states.at_utc,
+      participants: [
+        { object_id: "DEMO:004", assumed_mass_kg: 500, assumed_radius_m: 2 },
+        {
+          object_id: "DEMO:ASTEROID",
+          assumed_mass_kg: 800,
+          assumed_radius_m: 0.45,
+        },
+      ],
+      forced_contact: {
+        move_participant_index: 1,
+        impact_geometry: "CENTERED",
+      },
+      simulation: {
+        seed: 42,
+        duration_hours: 0.5,
+        max_resolved_fragments: 96,
+        output_step_seconds: 10,
+        max_cascade_generations: 0,
+      },
+      requested_products: ["TRAJECTORIES", "ENTRY_CROSSINGS"],
+    });
+  }
+
   async function cancel() {
     if (!job || !operation.current) return;
     setCancelPending(true);
@@ -152,6 +194,20 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
     }
   }
 
+  const demoButton = (
+    <button
+      type="button"
+      className="entry-demo-button"
+      onClick={runEntryDemo}
+      disabled={busy || loadingPage}
+    >
+      {demoRun && busy
+        ? "Running asteroid demo…"
+        : "Run fictional asteroid entry demo"}
+      <span aria-hidden="true">↗</span>
+    </button>
+  );
+
   return (
     <section
       className="scenario-lab"
@@ -166,6 +222,21 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
         Place the second object at the first object’s position at the snapshot
         epoch. Both keep their original velocities.
       </p>
+      <div className="entry-demo">
+        {demoActionHost
+          ? createPortal(
+              <>
+                {demoButton}
+                {demoRun && error && <p role="alert">{error}</p>}
+              </>,
+              demoActionHost,
+            )
+          : demoButton}
+        <p>
+          500 kg satellite and 800 kg fictional asteroid. Tracking stops at the
+          120 km boundary.
+        </p>
+      </div>
       <form onSubmit={submit}>
         <fieldset
           disabled={busy || loadingPage || objects.length < 2}

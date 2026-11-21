@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { useReplaySession } from "../app/useReplaySession";
 import TimelineControls from "./TimelineControls";
 
@@ -8,6 +9,9 @@ type Props = {
   lowGraphics: boolean;
   onLowGraphicsChange: (lowGraphics: boolean) => void;
   onRetry: () => void;
+  children?: ReactNode;
+  timelineLocked?: boolean;
+  onRestart?: () => void;
 };
 
 export default function ReplayBar({
@@ -17,6 +21,9 @@ export default function ReplayBar({
   lowGraphics,
   onLowGraphicsChange,
   onRetry,
+  children,
+  timelineLocked = false,
+  onRestart,
 }: Props) {
   return (
     <div className="replay-bar">
@@ -64,14 +71,14 @@ export default function ReplayBar({
             : ""}
         </p>
       )}
-      {session.replayable && (
+      {session.replayable && !timelineLocked && (
         <>
           <p className="effect-note">
             Impact flash is a decorative effect, not simulated debris.
           </p>
           <div className="timeline-buttons">
             <button onClick={session.focusImpact} disabled={!session.hasImpact}>
-              Fly to impact
+              Focus collision
             </button>
             <label className="preview-toggle">
               <input
@@ -83,11 +90,16 @@ export default function ReplayBar({
             </label>
           </div>
           <TimelineControls
-            replay={session.replay}
+            replay={
+              onRestart
+                ? { ...session.replay, reset: onRestart }
+                : session.replay
+            }
             label={previewing ? "synthetic" : session.provenance?.kind}
           />
         </>
       )}
+      {children}
     </div>
   );
 }

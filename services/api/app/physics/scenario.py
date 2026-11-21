@@ -27,6 +27,8 @@ MODEL_VERSION = "astra-demo-breakup-rk4-j2-v1"
 MAX_STORED_POSITIONS = 1_000_000
 MAX_PAGE_POSITIONS = 50_000
 MAX_PAGE_EPOCHS = 120
+ASTEROID_DEMO_ID = "DEMO:ASTEROID"
+ASTEROID_DEMO_TARGET = "DEMO:004"
 
 
 class ScenarioError(Exception):
@@ -133,10 +135,32 @@ def prepare_scenario(scenario: ScenarioRequest, demo: DemoBundle) -> PreparedSce
             "Reduce the run duration or fragment count, or increase sample spacing.",
         )
     by_id = {state.object_id: state for state in demo.states.states}
+    if scenario.participants[1].object_id == ASTEROID_DEMO_ID:
+        target = by_id.get(ASTEROID_DEMO_TARGET)
+        if (
+            target is None
+            or scenario.participants[0].object_id != ASTEROID_DEMO_TARGET
+            or scenario.forced_contact.move_participant_index != 1
+        ):
+            raise ScenarioError(
+                422, "ASTEROID_DEMO_PAIR", "Use the fixed fictional asteroid demo pair."
+            )
+        position = np.asarray(target.position)
+        radial = position / np.linalg.norm(position)
+        velocity = np.asarray(target.velocity) * 0.82 - radial * 900.0
+        by_id[ASTEROID_DEMO_ID] = CartesianState(
+            object_id=ASTEROID_DEMO_ID,
+            position=vector_tuple(position - velocity * 100.0),
+            velocity=vector_tuple(velocity),
+        )
     selected: list[CartesianState] = []
     masses: list[float] = []
     radii: list[float] = []
     assumptions = ["Forced hypothetical contact. One position is replaced at the snapshot epoch."]
+    if ASTEROID_DEMO_ID in by_id:
+        assumptions.append(
+            "Fictional asteroid state for the entry demo; generic representative breakup model."
+        )
     for item in scenario.participants:
         state = by_id.get(item.object_id)
         if state is None:
@@ -223,6 +247,12 @@ def simulate(
             "Exposure and secondary encounters are separate analysis products and are not computed by this runner.",
         ],
     )
+    directions = np.asarray([body.state.velocity for body in initial])
+    origins = to_render(event.contact_km - directions * 90, [epoch, epoch])
+    approach = (
+        FramePosition(object_id=initial[0].state.object_id, position=vector_tuple(origins[0])),
+        FramePosition(object_id=initial[1].state.object_id, position=vector_tuple(origins[1])),
+    )
     summary = SimulationSummary(
         schema_version="1.0",
         generated_at_utc=datetime.now(UTC),
@@ -236,6 +266,7 @@ def simulate(
         resolved_fragment_count=len(cloud.masses_kg),
         unresolved_mass_kg=cloud.unresolved_mass_kg,
         modification=event.modification,
+        contact_approach_itrs_m=approach,
         occupancy=[],
         encounters=[],
         entry_crossings=crossings,

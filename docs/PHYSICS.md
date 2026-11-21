@@ -74,3 +74,18 @@ B. `SATELLITE_EXPOSURE`: cataloged satellites screened for fragment close approa
 C. `CONDITIONAL_ENTRY`: only for fragments actually simulated crossing an entry threshold (e.g. 120 km). Show approximate crossing geolocation and event time. With a defensible sensitivity ensemble, draw a **clearly illustrative uncertainty corridor** and source the assumptions; otherwise show a crossing point with a warning that no reliable ground-impact corridor can be determined. Never draw danger polygons based solely on orbital ground tracks. No casualty figures, no city threat claims, no guarantee of surviving objects reaching ground. For MVP do not attempt detailed asteroid atmospheric entry or surface-impact/crater modeling.
 
 D. `DATA_LIMITATIONS`: visible dynamic panel explaining uncertainty, excluded effects, catalog coverage, data age, perturbations excluded and forced-scenario modifications.
+
+### Entry replay and fictional asteroid demo
+
+The asteroid demo pairs the synthetic Beacon-04 state with a fixed fictional
+incoming body. Its assumed state, mass and radius stay in the demo provenance.
+Each computed replay starts with two colored markers approaching along the
+assumed contact velocity directions. This segment is illustrative. Numerical
+propagation begins at the imposed contact. The camera follows a resolved
+fragment during guided dispersal and pauses at the first modeled entry.
+
+The overhead overlay counts each resolved fragment once in the 5° longitude
+and latitude cell beneath its modeled crossing of the spherical 120 km
+boundary. Each rounded marker is centered in its cell. Size and color reflect
+the count over the whole run, and labels show counts in the largest cells.
+Surface arrival and survival require a separate atmospheric model.

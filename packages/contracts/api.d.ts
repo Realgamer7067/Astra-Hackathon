@@ -764,6 +764,11 @@ export interface components {
         };
         /** ScenarioResult */
         ScenarioResult: {
+            /** Contact Approach Itrs M */
+            contact_approach_itrs_m?: [
+                components["schemas"]["FramePosition"],
+                components["schemas"]["FramePosition"]
+            ] | null;
             /** Encounters */
             encounters: components["schemas"]["CloseApproach"][];
             /** Entry Crossings */
@@ -820,6 +825,11 @@ export interface components {
         };
         /** SimulationSummary */
         SimulationSummary: {
+            /** Contact Approach Itrs M */
+            contact_approach_itrs_m?: [
+                components["schemas"]["FramePosition"],
+                components["schemas"]["FramePosition"]
+            ] | null;
             /** Encounters */
             encounters: components["schemas"]["CloseApproach"][];
             /** Entry Crossings */
