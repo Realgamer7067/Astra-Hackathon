@@ -52,3 +52,13 @@ export function recentTracks(
     .filter(([, points]) => points.length >= 2)
     .map(([id, points]) => ({ id, points }));
 }
+
+/** Reach the first recorded crossing after roughly eight seconds of playback. */
+export function presentationSpeed(
+  startMs: number,
+  firstEntryMs: number | null,
+): number {
+  if (firstEntryMs === null) return 15;
+  const desired = (firstEntryMs - startMs) / 8000;
+  return [15, 60, 300].find((speed) => speed >= desired) ?? 300;
+}

@@ -495,3 +495,24 @@ footer {
   margin-top: 0.28rem;
   font-size: 0.875rem;
 }
+
+.replay-stage {
+  display: inline-grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0.65rem;
+  margin-top: 0.45rem;
+  max-width: min(27rem, 72vw);
+  border-left: 2px solid #5ed8ef;
+  background: rgba(7, 16, 25, 0.91);
+  color: #eaf5ff;
+}
+
+.replay-stage span {
+  color: #a8c6d5;
+  font-size: 0.75rem;
+}
+
+.replay-stage[data-replay-stage="contact"],
+.replay-stage[data-replay-stage="entry"] {
+  border-color: #ff995b;
+}

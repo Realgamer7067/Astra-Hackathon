@@ -57,6 +57,14 @@ def test_synthetic_pair_computes_and_pages_trajectory(other: str):
         result = client.get(f"{path}/results").json()
         assert result["scenario_id"] == scenario_id
         assert result["provenance"] == summary["provenance"]
+        assert [actor["object_id"] for actor in result["contact_approach_itrs_m"]] == [
+            "DEMO:001",
+            other,
+        ]
+        assert (
+            result["contact_approach_itrs_m"][0]["position"]
+            != (result["contact_approach_itrs_m"][1]["position"])
+        )
         report = client.get(f"{path}/report").json()
         assert report["scenario_id"] == scenario_id
         assert report["seed"] == done["seed"]

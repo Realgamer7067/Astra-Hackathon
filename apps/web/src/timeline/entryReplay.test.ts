@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { countEntryCells, recentTracks } from "./entryReplay";
+import {
+  countEntryCells,
+  presentationSpeed,
+  recentTracks,
+} from "./entryReplay";
 import type { FrameSample } from "./interpolation";
 
 it("counts only unique modeled entries and keeps the date line in one column", () => {
@@ -35,4 +39,10 @@ it("builds bounded, chronological trails only for currently visible fragments", 
       ],
     },
   ]);
+});
+
+it("accelerates the guided replay toward a recorded entry and keeps normal runs readable", () => {
+  expect(presentationSpeed(0, null)).toBe(15);
+  expect(presentationSpeed(1000, 306_000)).toBe(60);
+  expect(presentationSpeed(0, 86_400_000)).toBe(300);
 });

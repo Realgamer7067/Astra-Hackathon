@@ -247,14 +247,12 @@ def simulate(
             "Exposure and secondary encounters are separate analysis products and are not computed by this runner.",
         ],
     )
-    approach = None
-    if scenario.participants[1].object_id == ASTEROID_DEMO_ID:
-        directions = np.asarray([body.state.velocity for body in initial])
-        origins = to_render(event.contact_km - directions * 90, [epoch, epoch])
-        approach = (
-            FramePosition(object_id=initial[0].state.object_id, position=vector_tuple(origins[0])),
-            FramePosition(object_id=initial[1].state.object_id, position=vector_tuple(origins[1])),
-        )
+    directions = np.asarray([body.state.velocity for body in initial])
+    origins = to_render(event.contact_km - directions * 90, [epoch, epoch])
+    approach = (
+        FramePosition(object_id=initial[0].state.object_id, position=vector_tuple(origins[0])),
+        FramePosition(object_id=initial[1].state.object_id, position=vector_tuple(origins[1])),
+    )
     summary = SimulationSummary(
         schema_version="1.0",
         generated_at_utc=datetime.now(UTC),

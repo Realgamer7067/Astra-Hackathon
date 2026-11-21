@@ -4,13 +4,14 @@ import {
   Color,
   ColorGeometryInstanceAttribute,
   GeometryInstance,
+  EllipseGeometry,
   HeadingPitchRange,
+  HorizontalOrigin,
+  LabelStyle,
   Material,
   PerInstanceColorAppearance,
   PolylineCollection,
   Primitive,
-  Rectangle,
-  RectangleGeometry,
   type Camera,
 } from "cesium";
 import type { EntryCrossing } from "../features/results/api";
@@ -76,29 +77,39 @@ export function drawTracks(
   }
 }
 
+function cellCenter(cell: EntryCell): Cartesian3 {
+  return Cartesian3.fromDegrees(
+    cell.west + CELL_DEGREES / 2,
+    cell.south + CELL_DEGREES / 2,
+  );
+}
+
 export function entryHeatmap(cells: readonly EntryCell[]): Primitive {
   const max = Math.max(1, ...cells.map((cell) => cell.count));
   return new Primitive({
-    geometryInstances: cells.map(({ west, south, count }) => {
-      const strength = Math.sqrt(count / max);
-      const color = Color.lerp(
-        Color.GOLD,
-        Color.ORANGERED,
-        strength,
-        new Color(),
-      ).withAlpha(0.26 + 0.5 * strength);
-      return new GeometryInstance({
-        geometry: new RectangleGeometry({
-          rectangle: Rectangle.fromDegrees(
-            west,
-            south,
-            west + CELL_DEGREES,
-            south + CELL_DEGREES,
-          ),
-          height: 3_000,
-          vertexFormat: PerInstanceColorAppearance.FLAT_VERTEX_FORMAT,
-        }),
-        attributes: { color: ColorGeometryInstanceAttribute.fromColor(color) },
+    geometryInstances: cells.flatMap((cell) => {
+      const strength = Math.sqrt(cell.count / max);
+      const center = cellCenter(cell);
+      const radius = 65_000 + 190_000 * strength;
+      return [1, 0.72, 0.42].map((scale, index) => {
+        const color = Color.lerp(
+          Color.GOLD,
+          Color.ORANGERED,
+          strength,
+          new Color(),
+        ).withAlpha(0.14 + 0.12 * index + 0.14 * strength);
+        return new GeometryInstance({
+          geometry: new EllipseGeometry({
+            center,
+            semiMajorAxis: radius * scale,
+            semiMinorAxis: radius * scale * 0.85,
+            height: 3_000 + index * 1_000,
+            vertexFormat: PerInstanceColorAppearance.FLAT_VERTEX_FORMAT,
+          }),
+          attributes: {
+            color: ColorGeometryInstanceAttribute.fromColor(color),
+          },
+        });
       });
     }),
     appearance: new PerInstanceColorAppearance({
@@ -110,14 +121,56 @@ export function entryHeatmap(cells: readonly EntryCell[]): Primitive {
   });
 }
 
+export function entryCellLabel(cell: EntryCell) {
+  return {
+    position: Cartesian3.fromDegrees(
+      cell.west + CELL_DEGREES / 2,
+      cell.south + CELL_DEGREES / 2,
+      8_000,
+    ),
+    text: String(cell.count),
+    font: "bold 15px sans-serif",
+    style: LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2,
+    fillColor: Color.WHITE,
+    outlineColor: Color.fromCssColorString("#592711"),
+    horizontalOrigin: HorizontalOrigin.CENTER,
+  };
+}
+
+export function focusEntryOverview(
+  camera: Camera,
+  cells: readonly EntryCell[],
+  duration: number,
+) {
+  if (cells.length === 0) return;
+  const peak = cells.reduce((largest, cell) =>
+    cell.count > largest.count ? cell : largest,
+  );
+  const anchor = cellCenter(peak);
+  const nearby = cells
+    .map(cellCenter)
+    .filter((center) => Cartesian3.distance(anchor, center) < 1_000_000);
+  const sphere = BoundingSphere.fromPoints(nearby);
+  camera.flyToBoundingSphere(sphere, {
+    duration,
+    offset: new HeadingPitchRange(
+      0,
+      -Math.PI / 2,
+      Math.max(1_650_000, sphere.radius * 4.5),
+    ),
+  });
+}
+
 export function focusReplay(
   camera: Camera,
   point: Vec3 | Cartesian3,
   duration: number,
+  range = 1_550_000,
 ) {
   const center = Array.isArray(point) ? Cartesian3.fromArray(point) : point;
   camera.flyToBoundingSphere(new BoundingSphere(center, 210_000), {
     duration,
-    offset: new HeadingPitchRange(0.35, -0.32, 1_550_000),
+    offset: new HeadingPitchRange(0.35, -0.32, range),
   });
 }

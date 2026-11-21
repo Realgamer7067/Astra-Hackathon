@@ -7,8 +7,11 @@ import {
   Credit,
   CreditDisplay,
   GeographicTilingScheme,
+  HeadingPitchRange,
+  LabelCollection,
   ImageryLayer,
   Material,
+  Matrix4,
   PointPrimitive,
   PointPrimitiveCollection,
   PolylineCollection,
@@ -24,6 +27,8 @@ import type { EntryCell, FragmentTrack } from "../timeline/entryReplay";
 import {
   drawTracks,
   entryHeatmap,
+  entryCellLabel,
+  focusEntryOverview,
   entryPosition,
   focusReplay,
 } from "./replayLayers";
@@ -50,6 +55,9 @@ type Props = {
   tracks?: FragmentTrack[];
   entryCells?: EntryCell[];
   entryFocus?: EntryCrossing;
+  entryOverview?: EntryCell[];
+  collisionCue?: boolean;
+  followDebris?: boolean;
   approach?: readonly { position: Vec3 }[];
   onApproachComplete: () => void;
   lowGraphics?: boolean;
@@ -78,6 +86,9 @@ export default function EarthView({
   tracks,
   entryCells,
   entryFocus,
+  entryOverview,
+  collisionCue,
+  followDebris,
   approach,
   onApproachComplete,
   lowGraphics = false,
@@ -87,6 +98,7 @@ export default function EarthView({
   const replayCollection = useRef<PointPrimitiveCollection | null>(null);
   const trailLines = useRef<PolylineCollection | null>(null);
   const entryLines = useRef<PolylineCollection | null>(null);
+  const entryLabels = useRef<LabelCollection | null>(null);
   const heatLayer = useRef<Primitive | null>(null);
   const approachPoints = useRef<PointPrimitiveCollection | null>(null);
   const approachComplete = useRef(onApproachComplete);
@@ -140,6 +152,7 @@ export default function EarthView({
     entryLines.current = instance.scene.primitives.add(
       new PolylineCollection(),
     );
+    entryLabels.current = instance.scene.primitives.add(new LabelCollection());
     approachPoints.current = instance.scene.primitives.add(
       new PointPrimitiveCollection(),
     );
@@ -191,6 +204,7 @@ export default function EarthView({
       approachPoints.current = null;
       trailLines.current = null;
       entryLines.current = null;
+      entryLabels.current = null;
       heatLayer.current = null;
       points.current = null;
       replayCollection.current = null;
@@ -317,7 +331,13 @@ export default function EarthView({
       instance.scene.primitives.remove(heatLayer.current);
       heatLayer.current = null;
     }
+    entryLabels.current?.removeAll();
     if (entryCells?.length) {
+      const largestCells = [...entryCells]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 12);
+      for (const cell of largestCells)
+        entryLabels.current?.add(entryCellLabel(cell));
       heatLayer.current = instance.scene.primitives.add(
         entryHeatmap(entryCells),
       );
@@ -330,7 +350,13 @@ export default function EarthView({
     const lines = entryLines.current;
     if (!instance || !lines || !available) return;
     lines.removeAll();
-    if (entryFocus) {
+    if (entryOverview?.length) {
+      focusEntryOverview(
+        instance.camera,
+        entryOverview,
+        prefersReducedMotion() ? 0 : 1.5,
+      );
+    } else if (entryFocus) {
       const point = entryPosition(entryFocus);
       const surface = Cartesian3.fromDegrees(
         entryFocus.longitude_deg,
@@ -348,7 +374,7 @@ export default function EarthView({
       focusReplay(instance.camera, point, prefersReducedMotion() ? 0 : 1.25);
     }
     instance.scene.requestRender();
-  }, [available, entryFocus]);
+  }, [available, entryFocus, entryOverview]);
 
   const contact = impact?.position;
   useEffect(() => {
@@ -356,6 +382,7 @@ export default function EarthView({
     const instance = widget.current;
     if (!available || !instance || !points || !approach || !contact) return;
     const target = Cartesian3.fromArray(contact);
+    focusReplay(instance.camera, target, 0, 2_800_000);
     const actors = approach.map(({ position }, index) => {
       const start = Cartesian3.fromArray(position);
       const color = index === 0 ? Color.CYAN : Color.ORANGE;
@@ -364,13 +391,13 @@ export default function EarthView({
         marker: points.add({
           position: start,
           color,
-          pixelSize: 14,
+          pixelSize: 18,
           outlineColor: Color.WHITE,
           outlineWidth: 2,
         }),
       };
     });
-    const duration = prefersReducedMotion() ? 1 : 2100;
+    const duration = prefersReducedMotion() ? 1000 : 4200;
     let frame = 0;
     const started = performance.now();
     const advance = (now: number) => {
@@ -394,10 +421,55 @@ export default function EarthView({
     };
   }, [available, approach, contact]);
 
+  useEffect(() => {
+    const points = approachPoints.current;
+    if (!available || !points || !collisionCue || !contact) return;
+    const marker = points.add({
+      position: Cartesian3.fromArray(contact),
+      color: Color.WHITE,
+      outlineColor: Color.ORANGE,
+      outlineWidth: 6,
+      pixelSize: 22,
+    });
+    widget.current?.scene.requestRender();
+    return () => {
+      if (!points.isDestroyed()) points.remove(marker);
+    };
+  }, [available, collisionCue, contact]);
+
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance || !followDebris) return;
+    instance.camera.cancelFlight();
+    return () => {
+      if (!instance.isDestroyed())
+        instance.camera.lookAtTransform(Matrix4.IDENTITY);
+    };
+  }, [followDebris]);
+
+  useEffect(() => {
+    const instance = widget.current;
+    const fragment = replayPositions?.values().next().value;
+    if (!instance || !followDebris || !fragment) return;
+    instance.camera.lookAt(
+      Cartesian3.fromArray(fragment),
+      new HeadingPitchRange(0.35, -0.32, 1_400_000),
+    );
+    instance.scene.requestRender();
+  }, [followDebris, replayPositions]);
+
   // Keep the collision in a three-quarter view so trails have visible depth.
   useEffect(() => {
     const instance = widget.current;
-    if (!instance || !available || !impact || !focusToken) return;
+    if (
+      !instance ||
+      !available ||
+      !impact ||
+      !focusToken ||
+      approach ||
+      followDebris
+    )
+      return;
     if (lastFocusToken.current === focusToken) return;
     lastFocusToken.current = focusToken;
     focusReplay(
@@ -406,7 +478,7 @@ export default function EarthView({
       prefersReducedMotion() ? 0 : 1.4,
     );
     instance.scene.requestRender();
-  }, [focusToken, available, impact]);
+  }, [focusToken, available, impact, approach, followDebris]);
 
   function zoom(direction: "in" | "out") {
     const instance = widget.current;

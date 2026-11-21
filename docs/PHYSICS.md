@@ -79,12 +79,13 @@ D. `DATA_LIMITATIONS`: visible dynamic panel explaining uncertainty, excluded ef
 
 The asteroid demo pairs the synthetic Beacon-04 state with a fixed fictional
 incoming body. Its assumed state, mass and radius stay in the demo provenance.
-The two colored markers in **Watch asteroid collision** show an illustrative
-approach along the contact velocity directions. The numerical propagation begins
-at forced contact and supplies the subsequent 3D fragment trails.
+Each computed replay starts with two colored markers approaching along the
+assumed contact velocity directions. This segment is illustrative. Numerical
+propagation begins at the imposed contact. The camera follows a resolved
+fragment during guided dispersal and pauses at the first modeled entry.
 
-The entry overlay counts each resolved fragment once in the 5° longitude and
-latitude cell beneath its modeled crossing of the spherical 120 km boundary.
-Cell color reflects modeled counts over the whole run. The focused entry camera
-shows one crossing above its projected cell. The line to the cell is a projection
-guide. Surface arrival and survival require a separate atmospheric model.
+The overhead overlay counts each resolved fragment once in the 5° longitude
+and latitude cell beneath its modeled crossing of the spherical 120 km
+boundary. Each rounded marker is centered in its cell. Size and color reflect
+the count over the whole run, and labels show counts in the largest cells.
+Surface arrival and survival require a separate atmospheric model.

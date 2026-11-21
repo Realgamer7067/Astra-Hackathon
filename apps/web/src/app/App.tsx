@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import ReplayBar from "../timeline/ReplayBar";
@@ -18,7 +19,11 @@ import {
 } from "../features/catalog/catalogApi";
 import { ResultsPanel } from "../features/results";
 import type { EntryCrossing, ScenarioResult } from "../features/results/api";
-import { countEntryCells, recentTracks } from "../timeline/entryReplay";
+import {
+  countEntryCells,
+  presentationSpeed,
+  recentTracks,
+} from "../timeline/entryReplay";
 import { findSegment, sampleTimes } from "../timeline/interpolation";
 import { ScenarioLab } from "../features/scenarios/ScenarioLab";
 import "../features/results/results.css";
@@ -30,6 +35,13 @@ import {
 } from "./useReplaySession";
 
 const Globe = lazy(() => import("../globe/EarthView"));
+const stageTitles = {
+  approach: "Before collision",
+  contact: "Contact",
+  debris: "Debris dispersal",
+  entry: "Atmospheric entries from above",
+};
+type Stage = keyof typeof stageTitles;
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
@@ -48,8 +60,12 @@ export function App(
     null,
   );
   const [showEntryMap, setShowEntryMap] = useState(true);
-  const [approachRun, setApproachRun] = useState<{ scenarioId: string }>();
-  const finishApproach = useCallback(() => setApproachRun(undefined), []);
+  const [presentation, setPresentation] = useState<{
+    scenarioId: string;
+    stage: Stage;
+  }>();
+  const lastStarted = useRef<string | null>(null);
+  const viewport = useRef<HTMLElement>(null);
   const [entryFocus, setEntryFocus] = useState<{
     scenarioId: string;
     entry: EntryCrossing;
@@ -143,35 +159,89 @@ export function App(
       : undefined;
 
   const approach = activeResult?.contact_approach_itrs_m;
-  const watchingApproach = Boolean(
-    approachRun &&
-    activeResult?.scenario_id === approachRun.scenarioId &&
-    approach,
+  const activeId = activeResult?.scenario_id;
+  const stage =
+    activeId && presentation?.scenarioId === activeId
+      ? presentation.stage
+      : undefined;
+  const prelude = stage === "approach" || stage === "contact";
+  const firstEntry = useMemo(
+    () =>
+      entries?.length
+        ? entries.reduce((earliest, entry) =>
+            Date.parse(entry.at_utc) < Date.parse(earliest.at_utc)
+              ? entry
+              : earliest,
+          )
+        : undefined,
+    [entries],
+  );
+  const firstEntryMs = firstEntry ? Date.parse(firstEntry.at_utc) : null;
+  const { clock, reset, pause, seek, play, setSpeed } = session.replay;
+
+  const watchCollision = useCallback(
+    (scenarioId: string) => {
+      reset();
+      setEntryFocus(undefined);
+      setShowEntryMap(true);
+      setPresentation({ scenarioId, stage: "approach" });
+      viewport.current?.scrollIntoView({ block: "start" });
+    },
+    [reset],
   );
 
-  function watchCollision() {
-    if (!activeResult) return;
-    session.replay.reset();
-    session.replay.setSpeed(15);
-    session.focusImpact();
-    setEntryFocus(undefined);
-    setApproachRun({ scenarioId: activeResult.scenario_id });
-  }
+  useEffect(() => {
+    if (
+      !activeId ||
+      !approach ||
+      !computedFrames ||
+      !session.hasImpact ||
+      lastStarted.current === activeId
+    )
+      return;
+    lastStarted.current = activeId;
+    watchCollision(activeId);
+  }, [activeId, approach, computedFrames, session.hasImpact, watchCollision]);
 
-  function focusFirstEntry() {
-    setApproachRun(undefined);
-    if (!activeResult || !entries?.length) return;
-    const first = entries.reduce((earliest, entry) =>
-      Date.parse(entry.at_utc) < Date.parse(earliest.at_utc) ? entry : earliest,
+  const arriveAtContact = useCallback(() => {
+    setPresentation((current) =>
+      current?.stage === "approach"
+        ? { ...current, stage: "contact" }
+        : current,
     );
-    session.replay.pause();
-    session.replay.seek(Date.parse(first.at_utc));
+  }, []);
+
+  const startDebris = useCallback(() => {
+    if (!activeId) return;
+    setPresentation({ scenarioId: activeId, stage: "debris" });
+    setSpeed(presentationSpeed(clock.startMs, firstEntryMs));
+    play();
+  }, [activeId, clock.startMs, firstEntryMs, play, setSpeed]);
+
+  useEffect(() => {
+    if (stage !== "contact") return;
+    const timer = window.setTimeout(startDebris, 800);
+    return () => window.clearTimeout(timer);
+  }, [stage, startDebris]);
+
+  const focusFirstEntry = useCallback(() => {
+    if (!activeId || !firstEntry || firstEntryMs === null) return;
+    pause();
+    seek(firstEntryMs);
     setShowEntryMap(true);
-    setEntryFocus({
-      scenarioId: activeResult.scenario_id,
-      entry: { ...first },
-    });
-  }
+    setPresentation({ scenarioId: activeId, stage: "entry" });
+    setEntryFocus({ scenarioId: activeId, entry: { ...firstEntry } });
+  }, [activeId, firstEntry, firstEntryMs, pause, seek]);
+
+  useEffect(() => {
+    if (
+      stage === "debris" &&
+      firstEntryMs !== null &&
+      clock.timeMs >= firstEntryMs
+    ) {
+      focusFirstEntry();
+    }
+  }, [stage, firstEntryMs, clock.timeMs, focusFirstEntry]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -211,7 +281,11 @@ export function App(
       </header>
       <ReplayHandoffContext.Provider value={session.onScenarioCompleted}>
         <main className="console">
-          <section className="viewport" aria-labelledby="scene-title">
+          <section
+            ref={viewport}
+            className="viewport"
+            aria-labelledby="scene-title"
+          >
             <Suspense
               fallback={
                 <p className="globe-state" role="status">
@@ -224,19 +298,29 @@ export function App(
                 objects={catalogObjects}
                 selectedId={selectedId}
                 replayPositions={
-                  session.replayable ? session.replay.positions : undefined
+                  session.replayable && !prelude
+                    ? session.replay.positions
+                    : undefined
                 }
-                impact={session.impact}
-                tracks={tracks}
+                impact={
+                  stage === "approach" && session.impact
+                    ? { ...session.impact, ageMs: null }
+                    : session.impact
+                }
+                tracks={prelude ? undefined : tracks}
                 approach={
-                  watchingApproach ? (approach ?? undefined) : undefined
+                  stage === "approach" ? (approach ?? undefined) : undefined
                 }
-                onApproachComplete={() => {
-                  finishApproach();
-                  session.replay.play();
-                }}
-                entryCells={showEntryMap ? entryCells : undefined}
+                onApproachComplete={arriveAtContact}
+                collisionCue={stage === "contact"}
+                followDebris={stage === "debris" && clock.playing}
+                entryCells={
+                  showEntryMap && (!stage || stage === "entry")
+                    ? entryCells
+                    : undefined
+                }
                 entryFocus={entryFocusForRun}
+                entryOverview={stage === "entry" ? entryCells : undefined}
                 focusToken={session.focusToken}
                 lowGraphics={lowGraphics}
               />
@@ -248,6 +332,29 @@ export function App(
                   ? `${utcLabel(renderStates.at_utc)} · visual sizes exaggerated`
                   : "Awaiting orbital snapshot"}
               </p>
+              {stage && (
+                <div
+                  className="replay-stage"
+                  role="status"
+                  data-replay-stage={stage}
+                >
+                  <strong>{stageTitles[stage]}</strong>
+                  {stage === "approach" && (
+                    <span>
+                      Illustrative approach · cyan target · amber incoming body
+                    </span>
+                  )}
+                  {stage === "contact" && (
+                    <span>Forced contact · simulated breakup begins</span>
+                  )}
+                  {stage === "debris" && (
+                    <span>Computed 3D fragment paths</span>
+                  )}
+                  {stage === "entry" && (
+                    <span>Modeled crossings at 120 km</span>
+                  )}
+                </div>
+              )}
             </div>
             <ReplayBar
               session={session}
@@ -256,44 +363,50 @@ export function App(
               lowGraphics={lowGraphics}
               onLowGraphicsChange={setLowGraphics}
               onRetry={retry}
+              timelineLocked={prelude}
+              onRestart={
+                activeId && approach
+                  ? () => watchCollision(activeId)
+                  : undefined
+              }
             >
               {activeResult && (
                 <div className="entry-controls">
                   {approach && (
                     <button
-                      onClick={watchCollision}
-                      disabled={!session.hasImpact || watchingApproach}
+                      onClick={() => watchCollision(activeResult.scenario_id)}
+                      disabled={!session.hasImpact || prelude}
                     >
-                      Watch asteroid collision
+                      Replay from approach
                     </button>
                   )}
-                  {watchingApproach && (
-                    <small role="status">
-                      Cyan satellite · amber asteroid · illustrative approach
-                    </small>
+                  {prelude && (
+                    <button onClick={startDebris}>Skip to debris</button>
                   )}
                   {entryCells.length > 0 ? (
                     <>
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={showEntryMap}
-                          onChange={(event) =>
-                            setShowEntryMap(event.target.checked)
-                          }
-                        />
-                        Entry heatmap
-                      </label>
+                      {(!stage || stage === "entry") && (
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={showEntryMap}
+                            onChange={(event) =>
+                              setShowEntryMap(event.target.checked)
+                            }
+                          />
+                          Entry heatmap
+                        </label>
+                      )}
                       <button
                         onClick={focusFirstEntry}
-                        disabled={!computedFrames}
+                        disabled={!computedFrames || prelude}
                       >
-                        Focus first entry
+                        View entry zone
                       </button>
                       <small>
                         {entries?.length} modeled entries at 120 km. Peak{" "}
                         {Math.max(...entryCells.map((cell) => cell.count))} per
-                        5° cell. Surface arrivals unmodeled.
+                        5° cell. Marker size reflects count.
                       </small>
                     </>
                   ) : (
