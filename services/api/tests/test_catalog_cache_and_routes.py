@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
 from app.connectors.celestrak import CelesTrakConnector
 from app.main import create_app
+from app.storage.catalog_cache import CatalogRepository
 from fastapi.testclient import TestClient
 
 FIXTURE = Path(__file__).resolve().parents[3] / "data/fixtures/demo.json"
@@ -114,3 +116,66 @@ def test_demo_fallback_live_refresh_and_persistent_cached_mode(tmp_path: Path) -
         assert states["velocity_unit"] == "m/s"
         assert len(states["states"]) == 2
         assert states["provenance"]["kind"] == "PROPAGATED_ESTIMATE"
+
+
+def test_retry_suppression_after_503_and_concurrent_refresh(tmp_path: Path) -> None:
+    calls = 0
+
+    def failing_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, text="Upstream outage")
+
+    repo = CatalogRepository(
+        cache_path=tmp_path / "cache.json",
+        demo_path=FIXTURE,
+        connector=CelesTrakConnector(
+            groups=("ACTIVE",), transport=httpx.MockTransport(failing_handler)
+        ),
+    )
+    t0 = datetime(2026, 11, 21, 12, 0, tzinfo=UTC)
+    _, refreshed1, _ = repo.fetch_snapshot(now_utc=t0)
+    _, refreshed2, msg2 = repo.fetch_snapshot(now_utc=t0 + timedelta(seconds=1))
+    assert refreshed1 is False
+    assert refreshed2 is False
+    assert "backoff" in msg2.lower()
+    assert calls == 1
+
+    # Concurrent refresh requests must allow only one in-flight upstream fetch.
+    entered = threading.Event()
+    release = threading.Event()
+    concurrent_calls = 0
+
+    def slow_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal concurrent_calls
+        if "GROUP=ACTIVE" in str(request.url):
+            concurrent_calls += 1
+            entered.set()
+            release.wait(timeout=2.0)
+            return httpx.Response(200, text=OMM_CSV)
+        return httpx.Response(200, text=SATCAT_CSV)
+
+    concurrent_repo = CatalogRepository(
+        cache_path=tmp_path / "concurrent_cache.json",
+        demo_path=FIXTURE,
+        connector=CelesTrakConnector(
+            groups=("ACTIVE",), transport=httpx.MockTransport(slow_handler)
+        ),
+    )
+    results: list[tuple[bool, str]] = []
+
+    def worker() -> None:
+        _, ok, msg = concurrent_repo.fetch_snapshot(now_utc=t0)
+        results.append((ok, msg))
+
+    t1 = threading.Thread(target=worker)
+    t1.start()
+    assert entered.wait(timeout=2.0)
+    _, ok2, msg_concurrent = concurrent_repo.fetch_snapshot(now_utc=t0)
+    release.set()
+    t1.join(timeout=2.0)
+
+    assert concurrent_calls == 1
+    assert ok2 is False
+    assert "already in progress" in msg_concurrent.lower()
+    assert results == [(True, "Fetched 2 objects from CelesTrak.")]

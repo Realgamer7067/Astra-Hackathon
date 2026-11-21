@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatSourceAge, modeBadgeLabel, searchObjects } from "./catalogApi";
+import {
+  fetchRenderStates,
+  formatSourceAge,
+  modeBadgeLabel,
+  searchObjects,
+} from "./catalogApi";
 
 describe("catalogApi helpers", () => {
   afterEach(() => {
@@ -43,6 +48,37 @@ describe("catalogApi helpers", () => {
     await searchObjects({ query: "123456", kind: "DEBRIS", limit: 25 });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/v1/objects?query=123456&kind=DEBRIS&limit=25",
+      { signal: undefined },
+    );
+  });
+
+  it("requests selected object states when ids are provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        at_utc: "2026-11-22T00:00:00Z",
+        frame: "ITRS",
+        position_unit: "m",
+        velocity_unit: "m/s",
+        states: [],
+        provenance: {
+          kind: "PROPAGATED_ESTIMATE",
+          mode: "LIVE",
+          source: "CelesTrak",
+          assumptions: [],
+          limitations: [],
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchRenderStates({
+      scope: "selected",
+      ids: ["NORAD:100500"],
+      limit: 1,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/states?scope=selected&ids=NORAD%3A100500&limit=1",
       { signal: undefined },
     );
   });

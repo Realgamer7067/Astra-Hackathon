@@ -105,6 +105,7 @@ export async function fetchRenderStates(
   options: {
     at?: string;
     scope?: "visible" | "selected" | "preset";
+    ids?: string[];
     limit?: number;
   } = {},
   signal?: AbortSignal,
@@ -112,6 +113,7 @@ export async function fetchRenderStates(
   const qs = new URLSearchParams();
   if (options.at) qs.set("at", options.at);
   qs.set("scope", options.scope ?? "visible");
+  if (options.ids?.length) qs.set("ids", options.ids.join(","));
   qs.set("limit", String(options.limit ?? 200));
   const res = await fetch(`/api/v1/states?${qs.toString()}`, { signal });
   return readJsonOrThrow<RenderStates>(res, "Orbital states unavailable");

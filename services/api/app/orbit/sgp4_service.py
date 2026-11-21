@@ -124,7 +124,11 @@ def propagate_objects(
             continue
 
         sat = Satrec()
-        omm.initialize(sat, rec.to_omm_dict())
+        try:
+            omm.initialize(sat, rec.to_omm_dict())
+        except (ValueError, KeyError, TypeError):
+            failed_ids.append(obj_id)
+            continue
         err, r_teme, v_teme = sat.sgp4(jd, fr)
         if err != 0:
             failed_ids.append(obj_id)
@@ -149,7 +153,11 @@ def propagate_objects(
         "Accuracy degrades as propagation time departs from the OMM element epoch.",
     ]
     if failed_ids:
-        limitations.append(f"{len(failed_ids)} requested object(s) could not be propagated.")
+        sample_failed = ", ".join(failed_ids[:5])
+        suffix = "…" if len(failed_ids) > 5 else ""
+        limitations.append(
+            f"{len(failed_ids)} requested object(s) could not be propagated ({sample_failed}{suffix})."
+        )
 
     provenance = Provenance(
         kind="PROPAGATED_ESTIMATE",

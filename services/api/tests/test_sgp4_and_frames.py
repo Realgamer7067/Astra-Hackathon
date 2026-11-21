@@ -72,3 +72,27 @@ def test_naive_epoch_rejected_in_frame_transforms() -> None:
     naive = datetime(2026, 11, 21, 12, 0, 0)
     with pytest.raises(ValueError, match="UTC"):
         teme_to_itrs((6800.0, 0.0, 0.0), (0.0, 7.6, 0.0), naive)
+
+
+def test_unsupported_high_norad_id_isolated_in_batch() -> None:
+    mixed_csv = (
+        ISS_OMM_CSV
+        + "HIGH ID OBJ,2025-999Z,2026-11-21T12:00:00.000000,14.20000000,0.0020000,53.0000,10.0000,20.0000,30.0000,0,U,123456789,999,10,0.00001,0.0,0\n"
+    )
+    records, _ = parse_omm_csv(mixed_csv, "TEST")
+    fetch = CelesTrakFetchResult(
+        fetched_at_utc=datetime(2026, 11, 21, 12, 0, tzinfo=UTC),
+        sources=["CelesTrak GP (TEST)"],
+        omm_records=records,
+        satcat_by_id={},
+    )
+    snap = build_snapshot_from_fetch(fetch, mode="LIVE")
+    batch = propagate_objects(
+        ["NORAD:25544", "NORAD:123456789"],
+        datetime(2026, 11, 21, 13, 0, tzinfo=UTC),
+        snap,
+        frame="ITRS",
+    )
+    assert [s.object_id for s in batch.states] == ["NORAD:25544"]
+    assert batch.failed_ids == ["NORAD:123456789"]
+    assert any("NORAD:123456789" in lim for lim in batch.provenance.limitations)

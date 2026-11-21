@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { kindColors, kindLabels, utcLabel } from "../../app/demo";
 import {
+  type CartesianState,
   type CatalogObject,
   type CatalogStatus,
   type ObjectDetail,
@@ -47,6 +48,8 @@ export function CatalogExplorer({
   const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [renderStates, setRenderStates] = useState<RenderStates | null>(null);
+  const [selectedStateOverride, setSelectedStateOverride] =
+    useState<CartesianState | null>(null);
   const [detail, setDetail] = useState<ObjectDetail | null>(null);
 
   const [query, setQuery] = useState("");
@@ -107,16 +110,53 @@ export function CatalogExplorer({
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
+      setSelectedStateOverride(null);
       return;
     }
     const controller = new AbortController();
-    fetchObjectDetail(selectedId, controller.signal)
-      .then(setDetail)
+    const inVisibleBatch =
+      renderStates?.states.some((s) => s.object_id === selectedId) ?? false;
+    setSelectedStateOverride(null);
+
+    Promise.all([
+      fetchObjectDetail(selectedId, controller.signal),
+      inVisibleBatch
+        ? Promise.resolve(null)
+        : fetchRenderStates(
+            { scope: "selected", ids: [selectedId], limit: 1 },
+            controller.signal,
+          ).catch(() => null),
+    ])
+      .then(([objDetail, selectedStates]) => {
+        if (controller.signal.aborted) return;
+        setDetail(objDetail);
+        const fetchedState =
+          selectedStates?.states.find((s) => s.object_id === selectedId) ??
+          null;
+        setSelectedStateOverride(fetchedState);
+        if (fetchedState && renderStates) {
+          const mergedStates: RenderStates = {
+            ...renderStates,
+            states: [...renderStates.states, fetchedState],
+          };
+          const mergedObjects = items.some((o) => o.id === objDetail.object.id)
+            ? items
+            : [...items, objDetail.object];
+          onCatalogStateChange?.({
+            status,
+            objects: mergedObjects,
+            renderStates: mergedStates,
+          });
+        }
+      })
       .catch(() => {
-        if (!controller.signal.aborted) setDetail(null);
+        if (!controller.signal.aborted) {
+          setDetail(null);
+          setSelectedStateOverride(null);
+        }
       });
     return () => controller.abort();
-  }, [selectedId]);
+  }, [selectedId, renderStates]);
 
   async function handleLoadMore() {
     if (!nextCursor || loadingMore) return;
@@ -156,9 +196,11 @@ export function CatalogExplorer({
     }
   }
 
-  const selectedState = renderStates?.states.find(
-    (s) => s.object_id === selectedId,
-  );
+  const selectedState =
+    renderStates?.states.find((s) => s.object_id === selectedId) ??
+    (selectedStateOverride?.object_id === selectedId
+      ? selectedStateOverride
+      : undefined);
   const selectedObj = detail?.object ?? items.find((o) => o.id === selectedId);
 
   return (

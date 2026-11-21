@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -178,11 +179,15 @@ class CatalogRepository:
         cache_path: Path,
         demo_path: Path,
         connector: CelesTrakConnector | None = None,
+        failure_backoff_seconds: int = MIN_REFRESH_INTERVAL_SECONDS,
     ) -> None:
         self.cache_path = cache_path
         self.demo_path = demo_path
         self.connector = connector or CelesTrakConnector()
+        self.failure_backoff_seconds = failure_backoff_seconds
         self._snapshot: CatalogSnapshot | None = None
+        self._refresh_lock = threading.Lock()
+        self._backoff_until: datetime | None = None
 
     @property
     def snapshot(self) -> CatalogSnapshot:
@@ -287,55 +292,77 @@ class CatalogRepository:
     def fetch_snapshot(
         self, *, now_utc: datetime | None = None
     ) -> tuple[CatalogSnapshot, bool, str]:
-        """Refresh from CelesTrak respecting 2-hour policy, falling back cleanly on failure."""
-        now = (now_utc or datetime.now(UTC)).astimezone(UTC)
-        current = self.snapshot
-
-        if (
-            current.mode in {"LIVE", "CACHED"}
-            and current.fetched_at is not None
-            and (now - current.fetched_at).total_seconds() < MIN_REFRESH_INTERVAL_SECONDS
-        ):
-            remaining_min = int(
-                (MIN_REFRESH_INTERVAL_SECONDS - (now - current.fetched_at).total_seconds()) // 60
-            )
+        """Refresh from CelesTrak respecting 2-hour policy, failure backoff, and concurrency."""
+        if not self._refresh_lock.acquire(blocking=False):
             return (
-                current,
+                self.snapshot,
                 False,
-                f"CelesTrak usage policy limits GP downloads to once every 2 hours (~{remaining_min} min remaining).",
+                "Catalog refresh already in progress; using current snapshot.",
             )
-
         try:
-            fetched = self.connector.fetch(now_utc=now)
-        except CelesTrakError as exc:
-            warnings = list(current.warning_codes)
-            if "PROVIDER_UNAVAILABLE" not in warnings:
-                warnings.append("PROVIDER_UNAVAILABLE")
-            fallback_mode: SourceMode = "CACHED" if current.mode in {"LIVE", "CACHED"} else "DEMO"
-            fallback = CatalogSnapshot(
-                catalog_snapshot_id=current.catalog_snapshot_id,
-                mode=fallback_mode,
-                sources=current.sources,
-                fetched_at=current.fetched_at,
-                objects=current.objects,
-                omm_by_id=current.omm_by_id,
-                satcat_by_id=current.satcat_by_id,
-                demo_states_by_id=current.demo_states_by_id,
-                demo_epoch_utc=current.demo_epoch_utc,
-                warning_codes=warnings,
-                decayed_filtered_count=current.decayed_filtered_count,
-            )
-            self._snapshot = fallback
-            return (
-                fallback,
-                False,
-                f"Provider unavailable ({exc}); retaining {fallback_mode} snapshot.",
-            )
+            now = (now_utc or datetime.now(UTC)).astimezone(UTC)
+            current = self.snapshot
 
-        self._write_cache(fetched)
-        live_snap = build_snapshot_from_fetch(fetched, mode="LIVE")
-        self._snapshot = live_snap
-        return live_snap, True, f"Fetched {len(live_snap.objects)} objects from CelesTrak."
+            if self._backoff_until is not None and now < self._backoff_until:
+                remaining_min = max(1, int((self._backoff_until - now).total_seconds() // 60))
+                return (
+                    current,
+                    False,
+                    f"Provider backoff active after recent failure (~{remaining_min} min remaining).",
+                )
+
+            if (
+                current.mode in {"LIVE", "CACHED"}
+                and current.fetched_at is not None
+                and (now - current.fetched_at).total_seconds() < MIN_REFRESH_INTERVAL_SECONDS
+            ):
+                remaining_min = int(
+                    (MIN_REFRESH_INTERVAL_SECONDS - (now - current.fetched_at).total_seconds())
+                    // 60
+                )
+                return (
+                    current,
+                    False,
+                    f"CelesTrak usage policy limits GP downloads to once every 2 hours (~{remaining_min} min remaining).",
+                )
+
+            try:
+                fetched = self.connector.fetch(now_utc=now)
+            except CelesTrakError as exc:
+                self._backoff_until = now + timedelta(seconds=self.failure_backoff_seconds)
+                warnings = list(current.warning_codes)
+                if "PROVIDER_UNAVAILABLE" not in warnings:
+                    warnings.append("PROVIDER_UNAVAILABLE")
+                fallback_mode: SourceMode = (
+                    "CACHED" if current.mode in {"LIVE", "CACHED"} else "DEMO"
+                )
+                fallback = CatalogSnapshot(
+                    catalog_snapshot_id=current.catalog_snapshot_id,
+                    mode=fallback_mode,
+                    sources=current.sources,
+                    fetched_at=current.fetched_at,
+                    objects=current.objects,
+                    omm_by_id=current.omm_by_id,
+                    satcat_by_id=current.satcat_by_id,
+                    demo_states_by_id=current.demo_states_by_id,
+                    demo_epoch_utc=current.demo_epoch_utc,
+                    warning_codes=warnings,
+                    decayed_filtered_count=current.decayed_filtered_count,
+                )
+                self._snapshot = fallback
+                return (
+                    fallback,
+                    False,
+                    f"Provider unavailable ({exc}); retaining {fallback_mode} snapshot.",
+                )
+
+            self._backoff_until = None
+            self._write_cache(fetched)
+            live_snap = build_snapshot_from_fetch(fetched, mode="LIVE")
+            self._snapshot = live_snap
+            return live_snap, True, f"Fetched {len(live_snap.objects)} objects from CelesTrak."
+        finally:
+            self._refresh_lock.release()
 
     def search_objects(
         self,
