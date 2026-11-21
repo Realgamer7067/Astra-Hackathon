@@ -1,13 +1,13 @@
 # TASK-001: Token-free runnable foundation
 
-- **Owner:** unclaimed
+- **Owner:** Realgamer7067
 - **Dependencies:** none
 - **PR:** none
 - **Target demo behavior:** Local API and token-free globe start offline; shared fixtures validate against executable contracts; all seven configured check categories run; baseline screenshot and exact startup commands recorded.
 
 ## Scope and allowed files
 
-- Suggested lane: Coordinator (suggested; claim pending); not an ownership assignment.
+- Lane: Coordinator.
 - Primary files / modules: Root manifests/locks/checks, apps/web baseline, services/api baseline, packages/contracts, data/fixtures.
 - Shared interfaces: docs/CONTRACTS.md; request coordinator changes to schemas/registration/locks/global tokens.
 - Exclusions: unrelated feature lanes, paid provisioning, unsupported science claims; optional cascades and surface-impact models.
