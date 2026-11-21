@@ -138,6 +138,56 @@ export function resolveFramesState(
   return { status: "loading" };
 }
 
+/** Neutral seed used when the active run supplies none (decorative only). */
+export const NEUTRAL_SEED = 0;
+
+export type RunMetadata = {
+  seed: number | undefined;
+  impact: AuthoritativeImpact | null | undefined;
+  /** Scenario epoch from the same run, used as a fallback impact epoch. */
+  epochUtc: string | null | undefined;
+};
+
+/**
+ * Seed, impact and epoch belonging to the run whose frames are active. Metadata
+ * from another scenario (an earlier handoff, replay options for a different
+ * scenario, or the demo bundle's job) is never reused for this run.
+ */
+export function resolveRunMetadata(
+  completedScenarioId: string | null,
+  demo: DemoBundle | undefined,
+  options?: ReplaySessionOptions,
+  eventRun?: CompletedScenarioHandoff | null,
+  urlScenarioId?: string | null,
+): RunMetadata {
+  const none: RunMetadata = {
+    seed: undefined,
+    impact: undefined,
+    epochUtc: undefined,
+  };
+  if (!completedScenarioId) return none;
+  if (eventRun?.scenarioId === completedScenarioId) {
+    return { seed: eventRun.seed, impact: eventRun.impact, epochUtc: null };
+  }
+  const optionsOwnRun =
+    options?.scenarioId === completedScenarioId ||
+    (options?.scenarioId == null &&
+      !eventRun &&
+      !urlScenarioId &&
+      demo?.job.scenario_id === completedScenarioId);
+  if (optionsOwnRun && (options?.seed !== undefined || options?.impact)) {
+    return { seed: options?.seed, impact: options?.impact, epochUtc: null };
+  }
+  if (demo?.job.scenario_id === completedScenarioId) {
+    return {
+      seed: demo.job.seed,
+      impact: undefined,
+      epochUtc: demo.scenario.epoch_utc,
+    };
+  }
+  return none;
+}
+
 export function resolveAuthoritativeImpact(
   previewing: boolean,
   demo: DemoBundle | undefined,
@@ -145,24 +195,54 @@ export function resolveAuthoritativeImpact(
   fetchedPage: FramePage | undefined,
   options?: ReplaySessionOptions,
   eventRun?: CompletedScenarioHandoff | null,
+  urlScenarioId?: string | null,
 ): AuthoritativeImpact | null {
   if (previewing) return null;
+  const pageForRun =
+    fetchedPage && fetchedPage.scenario_id === completedScenarioId
+      ? fetchedPage
+      : undefined;
   const confirmed =
     Boolean(completedScenarioId) ||
-    fetchedPage?.provenance.kind === "HYPOTHETICAL_SIMULATION";
-  const explicit = eventRun?.impact ?? options?.impact;
-  if (explicit) {
-    return { confirmed, ...explicit };
+    pageForRun?.provenance.kind === "HYPOTHETICAL_SIMULATION";
+  const meta = resolveRunMetadata(
+    completedScenarioId,
+    demo,
+    options,
+    eventRun,
+    urlScenarioId,
+  );
+  if (meta.impact) {
+    return { confirmed, ...meta.impact };
   }
+  // No impact metadata for this run: derive it from this run's own frames,
+  // optionally anchored to an epoch from the same run.
   const atUtc =
-    (demo?.job.scenario_id === completedScenarioId
-      ? demo?.scenario.epoch_utc
-      : undefined) ??
-    fetchedPage?.provenance.sourceEpochUtc ??
-    demo?.frames.provenance.sourceEpochUtc ??
+    meta.epochUtc ??
+    pageForRun?.provenance.sourceEpochUtc ??
+    (!completedScenarioId ? demo?.frames.provenance.sourceEpochUtc : null) ??
     null;
   if (!atUtc && !confirmed) return null;
   return { atUtc, confirmed };
+}
+
+export function resolveRunSeed(
+  previewing: boolean,
+  completedScenarioId: string | null,
+  demo: DemoBundle | undefined,
+  options?: ReplaySessionOptions,
+  eventRun?: CompletedScenarioHandoff | null,
+  urlScenarioId?: string | null,
+): number {
+  if (previewing) return SYNTHETIC_SEED;
+  const meta = resolveRunMetadata(
+    completedScenarioId,
+    demo,
+    options,
+    eventRun,
+    urlScenarioId,
+  );
+  return meta.seed ?? NEUTRAL_SEED;
 }
 
 /**
@@ -258,9 +338,13 @@ export async function createReplaySessionDriver(params: {
       rawAge === null
         ? null
         : Math.floor(rawAge / BURST_STEP_MS) * BURST_STEP_MS;
-    const seed = previewing
-      ? SYNTHETIC_SEED
-      : (eventRun?.seed ?? options?.seed ?? demo?.job.seed ?? 0);
+    const seed = resolveRunSeed(
+      previewing,
+      completedScenarioId,
+      demo,
+      options,
+      eventRun,
+    );
     const positions: Map<string, Vec3> = interpolateFrames(
       samples,
       times,
@@ -476,6 +560,7 @@ export function useReplaySession(
         fetchedFrames?.page,
         options,
         eventRun,
+        urlScenarioId,
       ),
     [
       previewing,
@@ -484,6 +569,7 @@ export function useReplaySession(
       fetchedFrames?.page,
       options,
       eventRun,
+      urlScenarioId,
     ],
   );
 
@@ -498,9 +584,14 @@ export function useReplaySession(
       : null;
   const ageMs =
     rawAge === null ? null : Math.floor(rawAge / BURST_STEP_MS) * BURST_STEP_MS;
-  const seed = previewing
-    ? SYNTHETIC_SEED
-    : (eventRun?.seed ?? options?.seed ?? demo?.job.seed ?? 0);
+  const seed = resolveRunSeed(
+    previewing,
+    completedScenarioId,
+    demo,
+    options,
+    eventRun,
+    urlScenarioId,
+  );
   const impact = useMemo(
     () => (site ? { position: site.position, seed, ageMs } : undefined),
     [site, seed, ageMs],

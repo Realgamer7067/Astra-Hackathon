@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import demoFixture from "../../../../data/fixtures/demo.json";
 import type { DemoBundle } from "../app/demo";
-import { createReplaySessionDriver } from "../app/useReplaySession";
+import {
+  createReplaySessionDriver,
+  NEUTRAL_SEED,
+} from "../app/useReplaySession";
 import { fpsFromFrames, renderScale } from "../globe/quality";
 import {
   classifyFramePage,
@@ -448,6 +451,122 @@ describe("completed-run replay session integration", () => {
     expect(afterReset.positions.get("FRAG-SOLO")).toEqual([
       6_950_000, -80_000, 210_000,
     ]);
+  });
+
+  it("scopes impact coordinates and seed to the active run when switching scenarios with an ID-only handoff", async () => {
+    const tA0 = "2026-11-21T12:00:00Z";
+    const tA1 = "2026-11-21T12:01:00Z";
+    const tB0 = "2026-11-21T14:00:00Z";
+    const tB1 = "2026-11-21T14:01:00Z";
+    const explicitVectorA: [number, number, number] = [
+      6_900_000, 111_000, 222_000,
+    ];
+
+    const framesA: FramePage = {
+      ...page(
+        [
+          {
+            at_utc: tA0,
+            positions: [
+              { object_id: "FRAG-A1", position: [6_900_000, 110_000, 220_000] },
+              { object_id: "FRAG-A2", position: [6_900_000, 112_000, 224_000] },
+            ],
+          },
+          {
+            at_utc: tA1,
+            positions: [
+              { object_id: "FRAG-A1", position: [6_950_000, 120_000, 230_000] },
+              { object_id: "FRAG-A2", position: [6_850_000, 100_000, 210_000] },
+            ],
+          },
+        ],
+        null,
+      ),
+      scenario_id: "scenario-A",
+    };
+
+    const framesB: FramePage = {
+      ...page(
+        [
+          {
+            at_utc: tB0,
+            positions: [
+              {
+                object_id: "FRAG-B1",
+                position: [7_200_000, -300_000, 400_000],
+              },
+              {
+                object_id: "FRAG-B2",
+                position: [7_200_000, -300_000, 402_000],
+              },
+            ],
+          },
+          {
+            at_utc: tB1,
+            positions: [
+              {
+                object_id: "FRAG-B1",
+                position: [7_250_000, -290_000, 410_000],
+              },
+              {
+                object_id: "FRAG-B2",
+                position: [7_150_000, -310_000, 392_000],
+              },
+            ],
+          },
+        ],
+        null,
+      ),
+      scenario_id: "scenario-B",
+    };
+
+    const fakeFetch = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === "/api/v1/scenarios/scenario-A/frames") {
+        return new Response(JSON.stringify(framesA), { status: 200 });
+      }
+      if (url === "/api/v1/scenarios/scenario-B/frames") {
+        return new Response(JSON.stringify(framesB), { status: 200 });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+
+    const driver = await createReplaySessionDriver({
+      loadStatus: "ready",
+      demo: demoFixture as unknown as DemoBundle,
+      previewing: false,
+      options: {
+        scenarioId: "scenario-A",
+        seed: 421,
+        impact: { atUtc: tA0, position: explicitVectorA },
+        fetchImpl: fakeFetch,
+      },
+    });
+
+    const stateA = driver.snapshot();
+    expect(stateA.completedScenarioId).toBe("scenario-A");
+    expect(stateA.seed).toBe(421);
+    expect(stateA.impact).toEqual({
+      position: explicitVectorA,
+      seed: 421,
+      ageMs: 0,
+    });
+    expect(stateA.focusToken).toBe(1);
+
+    // Complete scenario B with an ID-only handoff (no seed, no impact vector).
+    const stateB = await driver.completeScenario({ scenarioId: "scenario-B" });
+    expect(stateB.completedScenarioId).toBe("scenario-B");
+    expect(stateB.positions.get("FRAG-B1")).toEqual([
+      7_200_000, -300_000, 400_000,
+    ]);
+    expect(stateB.positions.has("FRAG-A1")).toBe(false);
+    // Impact is derived from scenario B's frames, NOT scenario A's explicit vector.
+    expect(stateB.impact?.position).toEqual([7_200_000, -300_000, 401_000]);
+    expect(stateB.impact?.position).not.toEqual(explicitVectorA);
+    // Seed falls back to neutral seed (0), NOT scenario A's 421 or demo's 42.
+    expect(stateB.seed).toBe(NEUTRAL_SEED);
+    expect(stateB.impact?.seed).toBe(NEUTRAL_SEED);
+    expect(stateB.focusToken).toBe(2);
   });
 });
 
