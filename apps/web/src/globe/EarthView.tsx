@@ -6,10 +6,12 @@ import {
   Color,
   Credit,
   CreditDisplay,
+  GeographicTilingScheme,
   ImageryLayer,
   PointPrimitive,
   PointPrimitiveCollection,
   TileMapServiceImageryProvider,
+  UrlTemplateImageryProvider,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { burstCount, burstParticles } from "./effects";
@@ -110,21 +112,45 @@ export default function EarthView({
       setAvailable(false);
       setWarning("Earth view stopped rendering. Reload the page to try again.");
     });
-    TileMapServiceImageryProvider.fromUrl(
-      "/cesium/Assets/Textures/NaturalEarthII",
-    )
-      .then((imagery) => {
-        if (instance.isDestroyed()) return;
-        instance.scene.imageryLayers.add(new ImageryLayer(imagery));
-        instance.scene.requestRender();
-      })
-      .catch(() => {
-        if (!instance.isDestroyed())
-          setWarning("Local imagery unavailable. Showing the Earth ellipsoid.");
-      });
+    const imagery = new UrlTemplateImageryProvider({
+      url: "/blue-marble/{z}/{x}/{y}.webp",
+      tilingScheme: new GeographicTilingScheme(),
+      tileWidth: 512,
+      tileHeight: 512,
+      maximumLevel: 3,
+      hasAlphaChannel: false,
+      enablePickFeatures: false,
+      credit: new Credit(
+        '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/" target="_blank" rel="noopener noreferrer">NASA Earth Observatory · Blue Marble</a>',
+        true,
+      ),
+    });
+    const layer = new ImageryLayer(imagery);
+    const removeImageryError = imagery.errorEvent.addEventListener(() => {
+      if (instance.isDestroyed() || !instance.scene.imageryLayers.remove(layer))
+        return;
+      TileMapServiceImageryProvider.fromUrl(
+        "/cesium/Assets/Textures/NaturalEarthII",
+        { credit: new Credit("Natural Earth", true) },
+      )
+        .then((fallback) => {
+          if (instance.isDestroyed()) return;
+          instance.scene.imageryLayers.add(new ImageryLayer(fallback));
+          instance.scene.requestRender();
+        })
+        .catch(() => {
+          if (!instance.isDestroyed())
+            setWarning(
+              "Local imagery unavailable. Showing the Earth ellipsoid.",
+            );
+        });
+    });
+    instance.scene.imageryLayers.add(layer);
+    instance.scene.requestRender();
     return () => {
       stopFps();
       removeError();
+      removeImageryError();
       points.current = null;
       replayCollection.current = null;
       burstCollection.current = null;

@@ -1,0 +1,125 @@
+.scenario-lab {
+  padding: 24px clamp(16px, 4vw, 56px) 34px;
+  border-top: 1px solid var(--line);
+}
+.scenario-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.scenario-heading h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.scenario-heading span {
+  color: #efc487;
+  font: 12px var(--mono);
+}
+.scenario-lab p,
+.scenario-lab li {
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 14px;
+}
+.scenario-jump {
+  color: inherit;
+  font-size: 13px;
+  text-underline-offset: 4px;
+}
+.scenario-inputs {
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 14px;
+}
+.scenario-participant,
+.scenario-settings {
+  display: grid;
+  grid-template-columns: minmax(135px, 2fr) repeat(2, minmax(90px, 1fr));
+  gap: 10px;
+  max-width: 720px;
+}
+.scenario-settings {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.scenario-lab label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.scenario-lab select,
+.scenario-lab input,
+.scenario-lab button {
+  font: inherit;
+  color: #eaf0f6;
+}
+.scenario-lab input:not([type="checkbox"], [type="range"]),
+.scenario-lab select,
+.scenario-lab button {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #14202d;
+  min-width: 0;
+}
+.scenario-lab button {
+  justify-self: start;
+  min-height: 38px;
+}
+.scenario-lab button:hover:enabled {
+  border-color: #79e3dc;
+}
+.scenario-lab :disabled {
+  opacity: 0.62;
+}
+.scenario-lab .scenario-confirm {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.scenario-progress,
+.scenario-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.scenario-lab .scenario-error {
+  color: #ffb8a4;
+}
+.scenario-output {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  max-width: 720px;
+}
+.scenario-output dl {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 1fr;
+  gap: 8px;
+  font-size: 14px;
+}
+.scenario-output dt {
+  color: var(--muted);
+}
+.scenario-output dd {
+  margin: 0;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+.scenario-output details {
+  margin-top: 12px;
+}
+@media (max-width: 480px) {
+  .scenario-participant {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .scenario-participant label:first-child {
+    grid-column: 1 / -1;
+  }
+  .scenario-inputs {
+    min-width: 0;
+  }
+}

@@ -8,13 +8,20 @@ from typing import cast
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from pydantic import ValidationError
 
 from .connectors.celestrak import CelesTrakConnector
+from .jobs.scenario_jobs import ScenarioJobs
 from .models.wire import DemoBundle, ErrorDetail, ErrorEnvelope, Health
+from .physics.scenario import ScenarioError
 from .routes import catalog as catalog_routes
 from .routes import objects as object_routes
+from .routes.scenarios import error_response
+from .routes.scenarios import router as scenario_router
 from .storage.catalog_cache import CatalogRepository
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -60,11 +67,38 @@ def create_app(
         except RuntimeError:
             logger.warning("Catalog repository could not load cache or demo fixture")
             app.state.catalog_repo = None
-        yield
+
+        jobs = None
+        if not hasattr(app.state, "scenario_jobs"):
+            jobs = ScenarioJobs()
+            app.state.scenario_jobs = jobs
+        try:
+            yield
+        finally:
+            if jobs is not None:
+                jobs.close()
+                del app.state.scenario_jobs
 
     api = FastAPI(title="ASTRA Orbital Collision Lab", version=VERSION, lifespan=lifespan)
     api.include_router(catalog_routes.router)
     api.include_router(object_routes.router)
+
+    @api.exception_handler(ScenarioError)
+    async def handle_scenario_error(_request: Request, exc: Exception) -> JSONResponse:
+        return error_response(cast(ScenarioError, exc))
+
+    @api.exception_handler(RequestValidationError)
+    async def handle_request_error(request: Request, exc: Exception) -> JSONResponse:
+        route = request.scope.get("route")
+        if not isinstance(route, APIRoute) or "scenarios" not in route.tags:
+            return await request_validation_exception_handler(
+                request, cast(RequestValidationError, exc)
+            )
+        return error_response(
+            ScenarioError(422, "INVALID_REQUEST", "Check the request parameters.")
+        )
+
+    api.include_router(scenario_router)
 
     @api.get("/health", operation_id="getHealth")
     def health(request: Request) -> Health:
@@ -73,7 +107,7 @@ def create_app(
             status="ok" if ready else "degraded",
             version=VERSION,
             cache_ready=ready,
-            simulation_ready=False,
+            simulation_ready=ready,
         )
 
     @api.get(
