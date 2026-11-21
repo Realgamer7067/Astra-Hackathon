@@ -2,7 +2,16 @@
 
 ## Coordination status
 
-This is the proposed v1 baseline for implementation review, not an implemented API. TASK-001 must freeze executable Pydantic/OpenAPI schemas and checked-in TypeScript types before dependent work is promoted. Affected lane owners must agree to changes.
+TASK-001 implements `GET /health` and `GET /api/v1/demo`. Other endpoint descriptions below are contracts for the owning lanes to implement. The [Pydantic models](../services/api/app/models/wire.py) define the foundation wire fields. [OpenAPI](../packages/contracts/openapi.json) and [TypeScript](../packages/contracts/api.d.ts) are generated from those models. Lane owners coordinate changes before modifying these shared shapes.
+
+The demo route returns a versioned bundle with catalog status, object records, a fixed ITRS marker snapshot, and schema examples for a forced scenario, job, frame page and result. The frame example is empty because no collision was computed. All fixture evidence is `SYNTHETIC_DEMO`. Separate lane endpoints must carry their own provenance and validation. In the MVP request example below, `max_cascade_generations` must be `0`.
+
+Regenerate from the repository root whenever the API schema changes:
+
+```bash
+uv run --locked python -m scripts.export_openapi
+npm run contracts:generate
+```
 
 ## Shared wire decisions
 
@@ -76,7 +85,7 @@ Sample scenario request:
     {"object_id": "NORAD:12345", "assumed_mass_kg": 1500, "assumed_radius_m": 3}
   ],
   "forced_contact": {"move_participant_index": 1, "impact_geometry": "CENTERED"},
-  "simulation": {"seed": 42, "duration_hours": 24, "output_step_seconds": 60, "max_resolved_fragments": 600, "max_cascade_generations": 1},
+  "simulation": {"seed": 42, "duration_hours": 24, "output_step_seconds": 60, "max_resolved_fragments": 600, "max_cascade_generations": 0},
   "requested_products": ["TRAJECTORIES", "ORBITAL_HAZARD", "SECONDARY_ENCOUNTERS", "ENTRY_CROSSINGS"]
 }
 ```

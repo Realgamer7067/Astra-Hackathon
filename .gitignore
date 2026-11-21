@@ -48,3 +48,6 @@ tmp/
 temp/
 .scratch/
 
+
+# Cesium runtime assets staged from the locked npm dependency
+/apps/web/public/cesium/

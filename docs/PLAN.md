@@ -1,6 +1,6 @@
 # ASTRA four-person implementation plan
 
-> Execution baseline dated 2026-11-21. Product concept supplied by user; no application implementation exists. People are suggested lanes, not silently assigned owners. Ready cards remain unclaimed until the normal merged-claim process completes.
+> Execution baseline dated 2026-11-21. The coordinator owns TASK-001 under the merged claim. Feature ownership is recorded when each claim merges.
 
 ## Success and approach
 
@@ -109,8 +109,8 @@ Only after the core is green and enough buffer remains. Backend official SBDB/Ho
 
 ## Start and handoff commands
 
-Planning branch: chore/astra-execution-plan. First review/merge this planning PR; then update main, claim TASK-001 with your actual name on a claim branch, and merge that claim before significant application coding. Example: python scripts/tasks.py claim TASK-001 --owner YOUR_NAME. Implementation branch: feat/TASK-001-foundation. TASK-002–005 remain planned until foundation schemas/checks are merged, then coordinator promotes them to ready and teammates choose/claim. Never fake claim merges or task completion.
+The foundation PR promotes TASK-002–005 on merge. Afterward, pull `main`, pick your allocated lane, and use `python scripts/tasks.py claim TASK-002 --owner YOUR_NAME` with your task number on a dedicated claim branch. Once the claim merges, branch again from current `main` to implement. TASK-004 and TASK-005 can start with fixtures while TASK-002 and TASK-003 build their producers.
 
 ## Evidence status
 
-No application dependencies installed, live catalog fetched, scientific tests run, UI built or benchmark measured during planning. Verification commands and results for this documentation change are reported separately. See source specification for full requirements; detailed physics/data/UX docs preserve specialized constraints.
+TASK-001's browser evidence is in [evidence/foundation-desktop.png](evidence/foundation-desktop.png). It shows the local demo snapshot. Live ingestion, numerical validation and scale benchmarks remain feature work.

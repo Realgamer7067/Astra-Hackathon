@@ -1,0 +1,11 @@
+{
+  "commands": {
+    "format": ["python", "scripts/check_foundation.py", "format"],
+    "lint": ["python", "scripts/check_foundation.py", "lint"],
+    "typecheck": ["python", "scripts/check_foundation.py", "typecheck"],
+    "unit": ["python", "scripts/check_foundation.py", "unit"],
+    "integration": ["python", "scripts/check_foundation.py", "integration"],
+    "security": ["python", "scripts/check_foundation.py", "security"],
+    "build": ["python", "scripts/check_foundation.py", "build"]
+  }
+}
