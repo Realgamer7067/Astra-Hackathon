@@ -225,6 +225,7 @@ class ScenarioResult(WireModel):
     scenario_id: str
     resolved_fragment_count: Annotated[int, Field(ge=0, le=1500)]
     unresolved_mass_kg: Annotated[float, Field(ge=0)] | None
+    contact_approach_itrs_m: tuple[FramePosition, FramePosition] | None = None
     modification: ForcedModification | None
     occupancy: list[OccupancyBin]
     encounters: list[CloseApproach]

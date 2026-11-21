@@ -55,19 +55,6 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
       setError("Choose two distinct objects.");
       return;
     }
-    setBusy(true);
-    setError(null);
-    setSummary(null);
-    setPage(null);
-    setJob(null);
-    setPageCursor(undefined);
-    operation.current?.abort();
-    const controller = new AbortController();
-    operation.current = controller;
-    const signal = AbortSignal.any([
-      controller.signal,
-      AbortSignal.timeout(130000),
-    ]);
     const scenario: ScenarioRequest = {
       schema_version: "1.0",
       type: "FORCED_HYPOTHETICAL",
@@ -86,6 +73,23 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
       },
       requested_products: ["TRAJECTORIES", "ENTRY_CROSSINGS"],
     };
+    await runScenario(scenario);
+  }
+
+  async function runScenario(scenario: ScenarioRequest) {
+    setBusy(true);
+    setError(null);
+    setSummary(null);
+    setPage(null);
+    setJob(null);
+    setPageCursor(undefined);
+    operation.current?.abort();
+    const controller = new AbortController();
+    operation.current = controller;
+    const signal = AbortSignal.any([
+      controller.signal,
+      AbortSignal.timeout(130000),
+    ]);
     try {
       const initialJob = await startScenario(scenario, signal);
       const finished = await monitorJob(initialJob, signal, setJob);
@@ -118,6 +122,34 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
         setCancelPending(false);
       }
     }
+  }
+
+  function runEntryDemo() {
+    void runScenario({
+      schema_version: "1.0",
+      type: "FORCED_HYPOTHETICAL",
+      epoch_utc: demo.states.at_utc,
+      participants: [
+        { object_id: "DEMO:004", assumed_mass_kg: 500, assumed_radius_m: 2 },
+        {
+          object_id: "DEMO:ASTEROID",
+          assumed_mass_kg: 800,
+          assumed_radius_m: 0.45,
+        },
+      ],
+      forced_contact: {
+        move_participant_index: 1,
+        impact_geometry: "CENTERED",
+      },
+      simulation: {
+        seed: 42,
+        duration_hours: 0.5,
+        max_resolved_fragments: 96,
+        output_step_seconds: 10,
+        max_cascade_generations: 0,
+      },
+      requested_products: ["TRAJECTORIES", "ENTRY_CROSSINGS"],
+    });
   }
 
   async function cancel() {
@@ -166,6 +198,19 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
         Place the second object at the first object’s position at the snapshot
         epoch. Both keep their original velocities.
       </p>
+      <div className="entry-demo">
+        <button
+          type="button"
+          onClick={runEntryDemo}
+          disabled={busy || loadingPage}
+        >
+          Run fictional asteroid entry demo
+        </button>
+        <p>
+          500 kg satellite and 800 kg fictional asteroid. Tracking stops at the
+          120 km boundary.
+        </p>
+      </div>
       <form onSubmit={submit}>
         <fieldset
           disabled={busy || loadingPage || objects.length < 2}

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { useReplaySession } from "../app/useReplaySession";
 import TimelineControls from "./TimelineControls";
 
@@ -8,6 +9,7 @@ type Props = {
   lowGraphics: boolean;
   onLowGraphicsChange: (lowGraphics: boolean) => void;
   onRetry: () => void;
+  children?: ReactNode;
 };
 
 export default function ReplayBar({
@@ -17,6 +19,7 @@ export default function ReplayBar({
   lowGraphics,
   onLowGraphicsChange,
   onRetry,
+  children,
 }: Props) {
   return (
     <div className="replay-bar">
@@ -71,7 +74,7 @@ export default function ReplayBar({
           </p>
           <div className="timeline-buttons">
             <button onClick={session.focusImpact} disabled={!session.hasImpact}>
-              Fly to impact
+              Focus collision
             </button>
             <label className="preview-toggle">
               <input
@@ -88,6 +91,7 @@ export default function ReplayBar({
           />
         </>
       )}
+      {children}
     </div>
   );
 }

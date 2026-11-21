@@ -20,9 +20,10 @@ type LoadState =
 
 interface ResultsPanelProps {
   scenarioId: string | null;
+  onResult?: (result: ScenarioResult) => void;
 }
 
-export function ResultsPanel({ scenarioId }: ResultsPanelProps) {
+export function ResultsPanel({ scenarioId, onResult }: ResultsPanelProps) {
   const [state, setState] = useState<LoadState>({ status: "idle" });
   const [reportMd, setReportMd] = useState<string | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -35,13 +36,17 @@ export function ResultsPanel({ scenarioId }: ResultsPanelProps) {
     setState({ status: "loading" });
     const ctrl = new AbortController();
     fetchResults(scenarioId, ctrl.signal)
-      .then((result) => setState({ status: "ready", result }))
+      .then((result) => {
+        if (ctrl.signal.aborted) return;
+        setState({ status: "ready", result });
+        onResult?.(result);
+      })
       .catch((err) => {
         if (!ctrl.signal.aborted)
           setState({ status: "error", message: err.message });
       });
     return () => ctrl.abort();
-  }, [scenarioId]);
+  }, [scenarioId, onResult]);
 
   async function handleExport() {
     if (!scenarioId) return;

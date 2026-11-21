@@ -17,6 +17,9 @@ import {
   modeBadgeLabel,
 } from "../features/catalog/catalogApi";
 import { ResultsPanel } from "../features/results";
+import type { EntryCrossing, ScenarioResult } from "../features/results/api";
+import { countEntryCells, recentTracks } from "../timeline/entryReplay";
+import { findSegment, sampleTimes } from "../timeline/interpolation";
 import { ScenarioLab } from "../features/scenarios/ScenarioLab";
 import "../features/results/results.css";
 import { type DemoBundle, loadDemo, utcLabel } from "./demo";
@@ -41,6 +44,16 @@ export function App(
 ) {
   const [previewing, setPreviewing] = useState(false);
   const [lowGraphics, setLowGraphics] = useState(false);
+  const [scenarioResult, setScenarioResult] = useState<ScenarioResult | null>(
+    null,
+  );
+  const [showEntryMap, setShowEntryMap] = useState(true);
+  const [approachRun, setApproachRun] = useState<{ scenarioId: string }>();
+  const finishApproach = useCallback(() => setApproachRun(undefined), []);
+  const [entryFocus, setEntryFocus] = useState<{
+    scenarioId: string;
+    entry: EntryCrossing;
+  }>();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -98,6 +111,68 @@ export function App(
     demo?.result.scenario_id ??
     null;
 
+  const computedFrames =
+    !previewing &&
+    session.completedScenarioId &&
+    session.framesState.status === "ready"
+      ? session.framesState.samples
+      : null;
+  const frameTimes = useMemo(
+    () => sampleTimes(computedFrames ?? []),
+    [computedFrames],
+  );
+  const frameIndex = findSegment(frameTimes, session.replay.clock.timeMs);
+  const tracks = useMemo(
+    () =>
+      computedFrames
+        ? recentTracks(computedFrames, frameIndex, 12, lowGraphics ? 12 : 48)
+        : undefined,
+    [computedFrames, frameIndex, lowGraphics],
+  );
+  const activeResult =
+    !previewing &&
+    session.completedScenarioId &&
+    scenarioResult?.scenario_id === session.completedScenarioId
+      ? scenarioResult
+      : null;
+  const entries = activeResult?.entry_crossings;
+  const entryCells = useMemo(() => countEntryCells(entries ?? []), [entries]);
+  const entryFocusForRun =
+    activeResult && entryFocus?.scenarioId === activeResult.scenario_id
+      ? entryFocus.entry
+      : undefined;
+
+  const approach = activeResult?.contact_approach_itrs_m;
+  const watchingApproach = Boolean(
+    approachRun &&
+    activeResult?.scenario_id === approachRun.scenarioId &&
+    approach,
+  );
+
+  function watchCollision() {
+    if (!activeResult) return;
+    session.replay.reset();
+    session.replay.setSpeed(15);
+    session.focusImpact();
+    setEntryFocus(undefined);
+    setApproachRun({ scenarioId: activeResult.scenario_id });
+  }
+
+  function focusFirstEntry() {
+    setApproachRun(undefined);
+    if (!activeResult || !entries?.length) return;
+    const first = entries.reduce((earliest, entry) =>
+      Date.parse(entry.at_utc) < Date.parse(earliest.at_utc) ? entry : earliest,
+    );
+    session.replay.pause();
+    session.replay.seek(Date.parse(first.at_utc));
+    setShowEntryMap(true);
+    setEntryFocus({
+      scenarioId: activeResult.scenario_id,
+      entry: { ...first },
+    });
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     loadDemo(AbortSignal.any([controller.signal, AbortSignal.timeout(5000)]))
@@ -152,6 +227,16 @@ export function App(
                   session.replayable ? session.replay.positions : undefined
                 }
                 impact={session.impact}
+                tracks={tracks}
+                approach={
+                  watchingApproach ? (approach ?? undefined) : undefined
+                }
+                onApproachComplete={() => {
+                  finishApproach();
+                  session.replay.play();
+                }}
+                entryCells={showEntryMap ? entryCells : undefined}
+                entryFocus={entryFocusForRun}
                 focusToken={session.focusToken}
                 lowGraphics={lowGraphics}
               />
@@ -171,7 +256,54 @@ export function App(
               lowGraphics={lowGraphics}
               onLowGraphicsChange={setLowGraphics}
               onRetry={retry}
-            />
+            >
+              {activeResult && (
+                <div className="entry-controls">
+                  {approach && (
+                    <button
+                      onClick={watchCollision}
+                      disabled={!session.hasImpact || watchingApproach}
+                    >
+                      Watch asteroid collision
+                    </button>
+                  )}
+                  {watchingApproach && (
+                    <small role="status">
+                      Cyan satellite · amber asteroid · illustrative approach
+                    </small>
+                  )}
+                  {entryCells.length > 0 ? (
+                    <>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={showEntryMap}
+                          onChange={(event) =>
+                            setShowEntryMap(event.target.checked)
+                          }
+                        />
+                        Entry heatmap
+                      </label>
+                      <button
+                        onClick={focusFirstEntry}
+                        disabled={!computedFrames}
+                      >
+                        Focus first entry
+                      </button>
+                      <small>
+                        {entries?.length} modeled entries at 120 km. Peak{" "}
+                        {Math.max(...entryCells.map((cell) => cell.count))} per
+                        5° cell. Surface arrivals unmodeled.
+                      </small>
+                    </>
+                  ) : (
+                    <small>
+                      No fragments crossed the modeled atmosphere boundary.
+                    </small>
+                  )}
+                </div>
+              )}
+            </ReplayBar>
           </section>
           <CatalogExplorer
             selectedId={selectedId}
@@ -181,6 +313,7 @@ export function App(
             <ResultsPanel
               key={currentScenarioId}
               scenarioId={currentScenarioId}
+              onResult={setScenarioResult}
             />
           </CatalogExplorer>
         </main>

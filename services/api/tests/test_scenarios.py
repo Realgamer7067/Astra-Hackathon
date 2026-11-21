@@ -141,3 +141,25 @@ def test_capacity_and_cancel_are_cooperative(monkeypatch: pytest.MonkeyPatch):
             assert (
                 client.post(f"/api/v1/jobs/{job['job_id']}/cancel").json()["state"] == "cancelled"
             )
+
+
+def test_fictional_asteroid_demo_records_modeled_entries():
+    with TestClient(create_app()) as client:
+        scenario = payload(client, "DEMO:ASTEROID")
+        scenario["participants"][0]["object_id"] = "DEMO:004"
+        scenario["participants"][1].update(assumed_mass_kg=800, assumed_radius_m=0.45)
+        scenario["simulation"].update(duration_hours=0.5, output_step_seconds=10)
+        created = client.post("/api/v1/scenarios", json=scenario)
+        assert created.status_code == 201, created.text
+        path = f"/api/v1/scenarios/{created.json()['scenario_id']}"
+        job = client.post(f"{path}/run").json()
+        assert wait_for_job(client, job["job_id"])["state"] == "completed"
+        result = client.get(f"{path}/results").json()
+        assert result["provenance"]["mode"] == "DEMO"
+        approach = result["contact_approach_itrs_m"]
+        assert [point["object_id"] for point in approach] == ["DEMO:004", "DEMO:ASTEROID"]
+        assert approach[0]["position"] != approach[1]["position"]
+        entries = result["entry_crossings"]
+        assert entries
+        assert len({entry["fragment_id"] for entry in entries}) == len(entries)
+        assert all(entry["threshold_altitude_km"] == 120 for entry in entries)

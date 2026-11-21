@@ -8,13 +8,25 @@ import {
   CreditDisplay,
   GeographicTilingScheme,
   ImageryLayer,
+  Material,
   PointPrimitive,
   PointPrimitiveCollection,
+  PolylineCollection,
+  type Primitive,
   TileMapServiceImageryProvider,
   UrlTemplateImageryProvider,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { burstCount, burstParticles } from "./effects";
+import type { EntryCrossing } from "../features/results/api";
+import type { Vec3 } from "../timeline/interpolation";
+import type { EntryCell, FragmentTrack } from "../timeline/entryReplay";
+import {
+  drawTracks,
+  entryHeatmap,
+  entryPosition,
+  focusReplay,
+} from "./replayLayers";
 import {
   type CartesianState,
   type CatalogObject,
@@ -35,6 +47,11 @@ type Props = {
   };
   /** Increment to fly the camera to the impact site. */
   focusToken?: number;
+  tracks?: FragmentTrack[];
+  entryCells?: EntryCell[];
+  entryFocus?: EntryCrossing;
+  approach?: readonly { position: Vec3 }[];
+  onApproachComplete: () => void;
   lowGraphics?: boolean;
 };
 
@@ -58,11 +75,22 @@ export default function EarthView({
   replayPositions,
   impact,
   focusToken,
+  tracks,
+  entryCells,
+  entryFocus,
+  approach,
+  onApproachComplete,
   lowGraphics = false,
 }: Props) {
   const fpsLabel = useRef<HTMLSpanElement>(null);
   const burstCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayCollection = useRef<PointPrimitiveCollection | null>(null);
+  const trailLines = useRef<PolylineCollection | null>(null);
+  const entryLines = useRef<PolylineCollection | null>(null);
+  const heatLayer = useRef<Primitive | null>(null);
+  const approachPoints = useRef<PointPrimitiveCollection | null>(null);
+  const approachComplete = useRef(onApproachComplete);
+  approachComplete.current = onApproachComplete;
   const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
   const lastFocusToken = useRef(0);
   const host = useRef<HTMLDivElement>(null);
@@ -104,6 +132,15 @@ export default function EarthView({
       new PointPrimitiveCollection(),
     );
     burstCollection.current = instance.scene.primitives.add(
+      new PointPrimitiveCollection(),
+    );
+    trailLines.current = instance.scene.primitives.add(
+      new PolylineCollection(),
+    );
+    entryLines.current = instance.scene.primitives.add(
+      new PolylineCollection(),
+    );
+    approachPoints.current = instance.scene.primitives.add(
       new PointPrimitiveCollection(),
     );
     reset(instance);
@@ -151,6 +188,10 @@ export default function EarthView({
       stopFps();
       removeError();
       removeImageryError();
+      approachPoints.current = null;
+      trailLines.current = null;
+      entryLines.current = null;
+      heatLayer.current = null;
       points.current = null;
       replayCollection.current = null;
       burstCollection.current = null;
@@ -263,29 +304,108 @@ export default function EarthView({
     widget.current?.scene.requestRender();
   }, [impact, lowGraphics]);
 
-  // Impact camera: fly (or jump, under reduced motion) above the impact site.
+  useEffect(() => {
+    if (!trailLines.current) return;
+    drawTracks(trailLines.current, tracks ?? []);
+    widget.current?.scene.requestRender();
+  }, [tracks]);
+
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance) return;
+    if (heatLayer.current) {
+      instance.scene.primitives.remove(heatLayer.current);
+      heatLayer.current = null;
+    }
+    if (entryCells?.length) {
+      heatLayer.current = instance.scene.primitives.add(
+        entryHeatmap(entryCells),
+      );
+    }
+    instance.scene.requestRender();
+  }, [entryCells]);
+
+  useEffect(() => {
+    const instance = widget.current;
+    const lines = entryLines.current;
+    if (!instance || !lines || !available) return;
+    lines.removeAll();
+    if (entryFocus) {
+      const point = entryPosition(entryFocus);
+      const surface = Cartesian3.fromDegrees(
+        entryFocus.longitude_deg,
+        entryFocus.latitude_deg,
+        3_000,
+      );
+      lines.add({
+        positions: [surface, point],
+        width: 4,
+        material: Material.fromType("PolylineGlow", {
+          color: Color.ORANGE,
+          glowPower: 0.25,
+        }),
+      });
+      focusReplay(instance.camera, point, prefersReducedMotion() ? 0 : 1.25);
+    }
+    instance.scene.requestRender();
+  }, [available, entryFocus]);
+
+  const contact = impact?.position;
+  useEffect(() => {
+    const points = approachPoints.current;
+    const instance = widget.current;
+    if (!available || !instance || !points || !approach || !contact) return;
+    const target = Cartesian3.fromArray(contact);
+    const actors = approach.map(({ position }, index) => {
+      const start = Cartesian3.fromArray(position);
+      const color = index === 0 ? Color.CYAN : Color.ORANGE;
+      return {
+        start,
+        marker: points.add({
+          position: start,
+          color,
+          pixelSize: 14,
+          outlineColor: Color.WHITE,
+          outlineWidth: 2,
+        }),
+      };
+    });
+    const duration = prefersReducedMotion() ? 1 : 2100;
+    let frame = 0;
+    const started = performance.now();
+    const advance = (now: number) => {
+      const t = Math.min(1, (now - started) / duration);
+      for (const actor of actors) {
+        actor.marker.position = Cartesian3.lerp(
+          actor.start,
+          target,
+          t,
+          new Cartesian3(),
+        );
+      }
+      instance.scene.requestRender();
+      if (t < 1) frame = requestAnimationFrame(advance);
+      else approachComplete.current();
+    };
+    frame = requestAnimationFrame(advance);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (!points.isDestroyed()) points.removeAll();
+    };
+  }, [available, approach, contact]);
+
+  // Keep the collision in a three-quarter view so trails have visible depth.
   useEffect(() => {
     const instance = widget.current;
     if (!instance || !available || !impact || !focusToken) return;
     if (lastFocusToken.current === focusToken) return;
-    const origin = Cartesian3.fromArray(impact.position);
-    const radius = Cartesian3.magnitude(origin);
-    if (!(radius > 0)) return;
     lastFocusToken.current = focusToken;
-    const direction = Cartesian3.normalize(origin, new Cartesian3());
-    const altitudeAboveSurface = Math.max(0, radius - 6_371_000);
-    const cameraRadius =
-      radius + Math.max(2_000_000, altitudeAboveSurface * 0.6);
-    instance.camera.flyTo({
-      destination: Cartesian3.multiplyByScalar(
-        direction,
-        cameraRadius,
-        new Cartesian3(),
-      ),
-      duration: prefersReducedMotion() ? 0 : 1.6,
-    });
+    focusReplay(
+      instance.camera,
+      impact.position,
+      prefersReducedMotion() ? 0 : 1.4,
+    );
     instance.scene.requestRender();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusToken, available, impact]);
 
   function zoom(direction: "in" | "out") {

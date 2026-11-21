@@ -1349,6 +1349,27 @@
       "ScenarioResult": {
         "additionalProperties": false,
         "properties": {
+          "contact_approach_itrs_m": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/components/schemas/FramePosition"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FramePosition"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Approach Itrs M"
+          },
           "encounters": {
             "items": {
               "$ref": "#/components/schemas/CloseApproach"
@@ -1475,6 +1496,27 @@
       "SimulationSummary": {
         "additionalProperties": false,
         "properties": {
+          "contact_approach_itrs_m": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "$ref": "#/components/schemas/FramePosition"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FramePosition"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Approach Itrs M"
+          },
           "encounters": {
             "items": {
               "$ref": "#/components/schemas/CloseApproach"
