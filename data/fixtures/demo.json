@@ -1,0 +1,344 @@
+{
+  "schema_version": "1.0",
+  "catalog": {
+    "mode": "DEMO",
+    "sources": ["ASTRA synthetic fixtures"],
+    "fetched_at": null,
+    "element_epoch_min": null,
+    "element_epoch_max": null,
+    "records": 12,
+    "displayable_count": 12,
+    "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821",
+    "warning_codes": ["SYNTHETIC_ONLY"]
+  },
+  "objects": [
+    {
+      "id": "DEMO:001",
+      "name": "Aster-01",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:002",
+      "name": "Aster-02",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:003",
+      "name": "Beacon-03",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:004",
+      "name": "Beacon-04",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:005",
+      "name": "Vela-05",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:006",
+      "name": "Vela-06",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:007",
+      "name": "Tern-07",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:008",
+      "name": "Tern-08",
+      "kind": "PAYLOAD",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:009",
+      "name": "Fragment-09",
+      "kind": "DEBRIS",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:010",
+      "name": "Fragment-10",
+      "kind": "DEBRIS",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:011",
+      "name": "Booster-11",
+      "kind": "ROCKET_BODY",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    },
+    {
+      "id": "DEMO:012",
+      "name": "Booster-12",
+      "kind": "ROCKET_BODY",
+      "operational_status": "UNKNOWN",
+      "state_source": "SYNTHETIC_DEMO",
+      "element_epoch_utc": null,
+      "mass_kg": null,
+      "effective_radius_m": null,
+      "physical_properties_basis": "UNAVAILABLE",
+      "orbit": null,
+      "catalog_snapshot_id": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821"
+    }
+  ],
+  "states": {
+    "at_utc": "2026-11-21T12:00:00Z",
+    "frame": "ITRS",
+    "position_unit": "m",
+    "velocity_unit": "m/s",
+    "states": [
+      {
+        "object_id": "DEMO:001",
+        "position": [-5825719, -1132405, 3708448],
+        "velocity": [1431, -7362, 0]
+      },
+      {
+        "object_id": "DEMO:002",
+        "position": [-5136532, -4465120, -2343484],
+        "velocity": [4920, -5660, 0]
+      },
+      {
+        "object_id": "DEMO:003",
+        "position": [-2115167, -6142892, 3454436],
+        "velocity": [7091, -2442, 0]
+      },
+      {
+        "object_id": "DEMO:004",
+        "position": [1111871, -5720080, -3501299],
+        "velocity": [7362, 1431, 0]
+      },
+      {
+        "object_id": "DEMO:005",
+        "position": [4365869, -5022358, 2291393],
+        "velocity": [5660, 4920, 0]
+      },
+      {
+        "object_id": "DEMO:006",
+        "position": [6975917, -2402001, -1976895],
+        "velocity": [2442, 7091, 0]
+      },
+      {
+        "object_id": "DEMO:007",
+        "position": [6610468, 1284945, 1066592],
+        "velocity": [-1431, 7362, 0]
+      },
+      {
+        "object_id": "DEMO:008",
+        "position": [4257082, 3700625, 4406989],
+        "velocity": [-4920, 5660, 0]
+      },
+      {
+        "object_id": "DEMO:009",
+        "position": [2193151, 6369373, -2859424],
+        "velocity": [-7091, 2442, 0]
+      },
+      {
+        "object_id": "DEMO:010",
+        "position": [-1154535, 5939570, 3353979],
+        "velocity": [-7362, -1431, 0]
+      },
+      {
+        "object_id": "DEMO:011",
+        "position": [-4560206, 5245917, 1225633],
+        "velocity": [-5660, -4920, 0]
+      },
+      {
+        "object_id": "DEMO:012",
+        "position": [-6562836, 2259766, -2122074],
+        "velocity": [-2442, -7091, 0]
+      }
+    ],
+    "provenance": {
+      "kind": "SYNTHETIC_DEMO",
+      "mode": "DEMO",
+      "source": "ASTRA synthetic fixtures",
+      "sourceEpochUtc": "2026-11-21T12:00:00Z",
+      "catalogSnapshotId": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821",
+      "assumptions": [
+        "Example Cartesian coordinates at a fixed fixture epoch."
+      ],
+      "limitations": [
+        "These objects are fictional. States are not orbit solutions."
+      ],
+      "coordinateFrame": "ITRS"
+    }
+  },
+  "scenario": {
+    "schema_version": "1.0",
+    "type": "FORCED_HYPOTHETICAL",
+    "epoch_utc": "2026-11-21T12:00:00Z",
+    "participants": [
+      {
+        "object_id": "DEMO:001",
+        "assumed_mass_kg": 500,
+        "assumed_radius_m": 2
+      },
+      {
+        "object_id": "DEMO:009",
+        "assumed_mass_kg": 5,
+        "assumed_radius_m": 0.2
+      }
+    ],
+    "forced_contact": {
+      "move_participant_index": 1,
+      "impact_geometry": "CENTERED"
+    },
+    "simulation": {
+      "seed": 42,
+      "duration_hours": 1,
+      "output_step_seconds": 60,
+      "max_resolved_fragments": 30,
+      "max_cascade_generations": 0
+    },
+    "requested_products": ["TRAJECTORIES"]
+  },
+  "job": {
+    "job_id": "demo-job-example",
+    "scenario_id": "demo-preset-01",
+    "seed": 42,
+    "state": "cancelled",
+    "progress": null,
+    "error": null
+  },
+  "frames": {
+    "schema_version": "1.0",
+    "generated_at_utc": "2026-11-21T12:00:00Z",
+    "scenario_id": "demo-preset-01",
+    "frame": "ITRS",
+    "position_unit": "m",
+    "sample_step_seconds": 60,
+    "samples": [
+      {
+        "at_utc": "2026-11-21T12:00:00Z",
+        "positions": []
+      }
+    ],
+    "next_cursor": null,
+    "provenance": {
+      "kind": "SYNTHETIC_DEMO",
+      "mode": "DEMO",
+      "source": "ASTRA synthetic fixtures",
+      "sourceEpochUtc": "2026-11-21T12:00:00Z",
+      "catalogSnapshotId": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821",
+      "assumptions": [
+        "Example Cartesian coordinates at a fixed fixture epoch."
+      ],
+      "limitations": [
+        "Schema example only. No collision or screening was computed."
+      ],
+      "coordinateFrame": "ITRS"
+    }
+  },
+  "result": {
+    "schema_version": "1.0",
+    "generated_at_utc": "2026-11-21T12:00:00Z",
+    "scenario_id": "demo-preset-01",
+    "resolved_fragment_count": 0,
+    "unresolved_mass_kg": null,
+    "modification": null,
+    "occupancy": [],
+    "encounters": [],
+    "entry_crossings": [],
+    "provenance": {
+      "kind": "SYNTHETIC_DEMO",
+      "mode": "DEMO",
+      "source": "ASTRA synthetic fixtures",
+      "sourceEpochUtc": "2026-11-21T12:00:00Z",
+      "catalogSnapshotId": "sha256:a8662faed5663b50acacc664673c0b15259ffb2599e8a906a32a1021a4957821",
+      "assumptions": [
+        "Example Cartesian coordinates at a fixed fixture epoch."
+      ],
+      "limitations": [
+        "Schema example only. No collision or screening was computed."
+      ]
+    }
+  }
+}

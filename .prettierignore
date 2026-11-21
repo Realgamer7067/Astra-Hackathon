@@ -1,0 +1,4 @@
+**/dist/
+**/node_modules/
+packages/contracts/api.d.ts
+packages/contracts/openapi.json

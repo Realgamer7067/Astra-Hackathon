@@ -25,7 +25,7 @@ Startup loads local data without waiting for ingestion. LIVE/CACHED/DEMO is expl
 
 ## Commands
 
-Application setup/dev/check commands are not implemented yet. TASK-001 must establish and actually run them before other application tasks are promoted. Existing repository checks remain available through scripts/.
+The foundation uses Python 3.12 and Node.js 24 in CI with `uv.lock` and `package-lock.json`. Follow the root README for startup and checks. Vite serves bundled Natural Earth imagery and proxies the local FastAPI service. TASK-001 registers the demo/health endpoints, with live catalog, simulation jobs and analysis services reserved for their owning lanes.
 
 
 ## 2. BUILD STACK
