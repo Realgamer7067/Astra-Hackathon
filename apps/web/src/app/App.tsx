@@ -7,6 +7,8 @@ import {
   utcLabel,
 } from "./demo";
 
+import { ScenarioLab } from "../features/scenarios/ScenarioLab";
+
 const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
@@ -44,6 +46,11 @@ export function App() {
           ASTRA
         </div>
         <span className="product-name">Orbital Collision Lab</span>
+        {demo && (
+          <a className="scenario-jump" href="#collision-lab">
+            Collision lab
+          </a>
+        )}
         <span className="source-status" role="status">
           {demo
             ? "Synthetic demo"
@@ -139,6 +146,7 @@ export function App() {
           </div>
         </aside>
       </main>
+      {demo && <ScenarioLab demo={demo} />}
       <footer>
         Educational simulation. This snapshot uses fictional objects and example
         coordinates.

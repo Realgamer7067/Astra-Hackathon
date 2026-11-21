@@ -2,7 +2,7 @@
 
 Explore source-backed orbital estimates, construct explicitly hypothetical collisions, replay simulated debris and inspect bounded orbital exposure.
 
-**Status: TASK-001 foundation.** The local app includes a Cesium globe and a 12-object synthetic snapshot. Live catalog ingestion, collision physics, replay and exposure analysis are feature tasks.
+**Status: local collision demo.** The app includes the Cesium globe, a 12-object synthetic snapshot, and a collision lab that computes representative fragments and saves trajectory samples for the current API session. Live catalog ingestion, globe playback, and exposure analysis are separate feature lanes.
 
 Start with [four-person execution plan](docs/PLAN.md), [project brief](docs/PROJECT_BRIEF.md), [architecture](docs/ARCHITECTURE.md), [contracts](docs/CONTRACTS.md), and the [task board](tasks/README.md). The full supplied [master specification](docs/ASTRA_MASTER_PROMPT.md) is preserved; specialized details live in [physics](docs/PHYSICS.md), [data sources](docs/DATA_SOURCES.md), [UX](docs/UX.md), and [limitations](docs/LIMITATIONS.md).
 
@@ -30,6 +30,8 @@ npm run dev -- --strictPort
 ```
 
 Open `http://127.0.0.1:5173`. The globe, imagery and fixture data are served locally, including when the internet is unavailable after dependency installation. Select a demo object to highlight its marker and inspect its example position. The API serves `/health`, `/api/v1/demo` and `/docs` at port 8000. The dev server proxies API requests to that port.
+
+Open **Collision lab**, pick two distinct synthetic objects, and accept the editable mass and radius assumptions. Run the scenario, then inspect the energy, forced-position change, and saved frame samples. The default pair is a satellite and debris. Choose Aster-02 as the moved object for a satellite–satellite run and adjust its assumed mass and radius. Run history is held in memory and resets when the API stops.
 
 Run `python scripts/repo_health.py`, `python -m unittest discover -s tests`, and `python scripts/run_project_checks.py`. The security check uses the npm registry. For the production web output, run `npm run build` and serve `apps/web/dist` with `/api/` and `/health` routed to FastAPI.
 

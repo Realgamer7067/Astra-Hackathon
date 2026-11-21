@@ -11,7 +11,7 @@ def test_offline_demo_serves_catalog_and_frames() -> None:
     with TestClient(create_app()) as client:
         health = client.get("/health").json()
         assert health["cache_ready"] is True
-        assert health["simulation_ready"] is False
+        assert health["simulation_ready"] is True
         response = client.get("/api/v1/demo")
         assert response.status_code == 200
         demo = response.json()

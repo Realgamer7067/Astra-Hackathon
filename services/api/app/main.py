@@ -8,10 +8,14 @@ from typing import cast
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from .jobs.scenario_jobs import ScenarioJobs
 from .models.wire import DemoBundle, ErrorDetail, ErrorEnvelope, Health
+from .physics.scenario import ScenarioError
+from .routes.scenarios import error_response, router
 
 ROOT = Path(__file__).resolve().parents[3]
 DEMO_FILE = ROOT / "data/fixtures/demo.json"
@@ -27,9 +31,25 @@ def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
         except (OSError, ValidationError):
             logger.warning("Offline demo fixture could not be loaded")
             app.state.demo = None
-        yield
+        app.state.scenario_jobs = ScenarioJobs()
+        try:
+            yield
+        finally:
+            app.state.scenario_jobs.close()
 
     api = FastAPI(title="ASTRA Orbital Collision Lab", version=VERSION, lifespan=lifespan)
+
+    @api.exception_handler(ScenarioError)
+    async def handle_scenario_error(_request: Request, exc: Exception) -> JSONResponse:
+        return error_response(cast(ScenarioError, exc))
+
+    @api.exception_handler(RequestValidationError)
+    async def handle_request_error(_request: Request, _exc: Exception) -> JSONResponse:
+        return error_response(
+            ScenarioError(422, "INVALID_REQUEST", "Check the request parameters.")
+        )
+
+    api.include_router(router)
 
     @api.get("/health", operation_id="getHealth")
     def health(request: Request) -> Health:
@@ -38,7 +58,7 @@ def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
             status="ok" if ready else "degraded",
             version=VERSION,
             cache_ready=ready,
-            simulation_ready=False,
+            simulation_ready=ready,
         )
 
     @api.get(

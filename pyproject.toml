@@ -2,7 +2,10 @@
 name = "astra-orbital-collision-lab"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.165,<0.166", "pydantic>=2.14,<3", "uvicorn>=0.54,<0.55"]
+dependencies = [
+    "astropy>=8,<9", "fastapi>=0.165,<0.166", "numpy>=2,<3",
+    "pydantic>=2.14,<3", "uvicorn>=0.54,<0.55",
+]
 
 [dependency-groups]
 dev = ["bandit>=1.8,<2", "httpx>=0.28,<0.29", "mypy>=2,<3", "pytest>=9,<10", "ruff>=0.17,<0.18"]
@@ -21,3 +24,7 @@ line-length = 100
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["astropy", "astropy.*"]
+ignore_missing_imports = true
