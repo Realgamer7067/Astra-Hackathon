@@ -1,0 +1,379 @@
+/* ===================================================================
+   TASK-005 Results panel styles — Lane D
+   Dark navy/teal theme per UX.md, amber for hypothetical warnings
+   =================================================================== */
+
+/* Panel container */
+.results-panel {
+  padding: 1rem;
+  border-top: 1px solid rgba(121, 227, 220, 0.15);
+  color: #d0dae8;
+  font-size: 0.85rem;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.results-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #79e3dc;
+}
+
+.results-scenario-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #0f1724;
+  background: #f3c17d;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+}
+
+/* Loading / Error / Empty */
+.results-loading,
+.results-hint {
+  color: #8899aa;
+  font-style: italic;
+}
+
+.results-error {
+  color: #e06060;
+  font-weight: 600;
+}
+
+.results-empty {
+  color: #8899aa;
+  padding: 1rem 0;
+}
+
+/* Summary */
+.results-summary dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.results-summary dt {
+  color: #8899aa;
+}
+
+.results-summary dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Occupancy chart */
+.occupancy-chart {
+  margin: 1rem 0;
+}
+
+.occupancy-chart h3 {
+  font-size: 0.85rem;
+  color: #79e3dc;
+  margin: 0 0 0.25rem;
+}
+
+.chart-note,
+.table-note,
+.crossings-note {
+  font-size: 0.75rem;
+  color: #8899aa;
+  margin: 0 0 0.5rem;
+}
+
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chart-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chart-label {
+  flex: 0 0 100px;
+  text-align: right;
+  font-size: 0.75rem;
+  color: #8899aa;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-bar-container {
+  flex: 1;
+  background: rgba(121, 227, 220, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  height: 16px;
+}
+
+.chart-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #2a7c8c, #79e3dc);
+  border-radius: 2px;
+  min-width: 2px;
+  transition: width 0.3s ease;
+}
+
+.chart-value {
+  flex: 0 0 2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Encounters table */
+.encounters-section {
+  margin: 1rem 0;
+}
+
+.encounters-section h3 {
+  font-size: 0.85rem;
+  color: #79e3dc;
+  margin: 0 0 0.25rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.encounters-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.encounters-table th {
+  text-align: left;
+  color: #8899aa;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid rgba(121, 227, 220, 0.2);
+  white-space: nowrap;
+}
+
+.encounters-table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid rgba(121, 227, 220, 0.06);
+}
+
+.encounters-table .mono {
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+}
+
+/* Entry crossings */
+.entry-crossings {
+  margin: 1rem 0;
+}
+
+.entry-crossings h3 {
+  font-size: 0.85rem;
+  color: #f3c17d;
+  margin: 0 0 0.25rem;
+}
+
+.crossings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.crossing-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(121, 227, 220, 0.06);
+  font-size: 0.78rem;
+}
+
+.crossing-id {
+  font-weight: 600;
+  color: #f3c17d;
+}
+
+.crossing-geo {
+  color: #d0dae8;
+}
+
+.crossing-time {
+  color: #8899aa;
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+}
+
+/* Provenance badge */
+.provenance-badge {
+  margin: 0.5rem 0;
+  font-size: 0.75rem;
+  border: 1px solid rgba(121, 227, 220, 0.12);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+}
+
+.provenance-badge summary {
+  cursor: pointer;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.prov-kind {
+  font-weight: 700;
+  color: #79e3dc;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.prov-source {
+  color: #8899aa;
+}
+
+.prov-stale {
+  color: #f3c17d;
+  font-weight: 700;
+}
+
+.prov-details {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(121, 227, 220, 0.08);
+}
+
+.prov-details dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  margin: 0;
+}
+
+.prov-details dt {
+  color: #8899aa;
+}
+
+.prov-details dd {
+  margin: 0;
+}
+
+.prov-details .mono {
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.68rem;
+  word-break: break-all;
+}
+
+.prov-section h4 {
+  font-size: 0.72rem;
+  color: #8899aa;
+  margin: 0.4rem 0 0.15rem;
+}
+
+.prov-section ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.72rem;
+}
+
+/* Actions */
+.results-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-export {
+  padding: 0.4rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f1724;
+  background: #79e3dc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-export:hover {
+  background: #5fd0c8;
+}
+
+/* Report overlay */
+.report-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 25, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.report-content {
+  background: #0f1724;
+  border: 1px solid rgba(121, 227, 220, 0.2);
+  border-radius: 8px;
+  max-width: 700px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.report-toolbar h3 {
+  margin: 0;
+  color: #79e3dc;
+}
+
+.report-toolbar button {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.78rem;
+  color: #d0dae8;
+  background: rgba(121, 227, 220, 0.1);
+  border: 1px solid rgba(121, 227, 220, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.report-md {
+  white-space: pre-wrap;
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  color: #d0dae8;
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .results-summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-label {
+    flex: 0 0 70px;
+    font-size: 0.68rem;
+  }
+
+  .crossing-item {
+    flex-wrap: wrap;
+  }
+
+  .report-content {
+    max-width: 95vw;
+    padding: 1rem;
+  }
+}

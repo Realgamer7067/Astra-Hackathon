@@ -46,6 +46,8 @@ def create_app(
         except (OSError, ValidationError):
             logger.warning("Offline demo fixture could not be loaded")
             app.state.demo = None
+        if not hasattr(app.state, "runs"):
+            app.state.runs = {}
 
         repo = CatalogRepository(
             cache_path=resolved_cache,
@@ -91,6 +93,11 @@ def create_app(
             request_id=uuid4().hex,
         )
         return JSONResponse(status_code=503, content=error.model_dump(mode="json"))
+
+    # --- Lane D: results & report routes (TASK-005) ---
+    from .routes.results import router as results_router
+
+    api.include_router(results_router)
 
     return api
 

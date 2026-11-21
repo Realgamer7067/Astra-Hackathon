@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { kindColors, kindLabels, utcLabel } from "../../app/demo";
 import {
   type CartesianState,
@@ -18,6 +18,7 @@ import {
 } from "./catalogApi";
 
 type Props = {
+  children?: ReactNode;
   selectedId: string | null;
   onSelectId: (id: string | null) => void;
   onCatalogStateChange?: (payload: {
@@ -40,6 +41,7 @@ const WARNING_LABELS: Record<string, string> = {
 };
 
 export function CatalogExplorer({
+  children,
   selectedId,
   onSelectId,
   onCatalogStateChange,
@@ -401,6 +403,7 @@ export function CatalogExplorer({
           </p>
         )}
       </div>
+      {children}
     </aside>
   );
 }

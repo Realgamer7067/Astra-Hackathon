@@ -16,6 +16,8 @@ import {
   type RenderStates,
   modeBadgeLabel,
 } from "../features/catalog/catalogApi";
+import { ResultsPanel } from "../features/results";
+import "../features/results/results.css";
 import { type DemoBundle, loadDemo, utcLabel } from "./demo";
 import {
   type ReplaySessionOptions,
@@ -29,6 +31,7 @@ type LoadState =
 
 export function App(
   props: {
+    activeScenarioId?: string | null;
     replayOptions?: ReplaySessionOptions;
     renderScenarioPanel?: (
       onScenarioCompleted: ScenarioCompletionCallback,
@@ -81,6 +84,18 @@ export function App(
     previewing,
     replayOptions,
   );
+
+  const legacyScenarioId =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("scenarioId")?.trim() ||
+        null;
+  const currentScenarioId =
+    props.activeScenarioId ??
+    session.completedScenarioId ??
+    legacyScenarioId ??
+    demo?.result.scenario_id ??
+    null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -157,7 +172,12 @@ export function App(
             selectedId={selectedId}
             onSelectId={setSelectedId}
             onCatalogStateChange={handleCatalogStateChange}
-          />
+          >
+            <ResultsPanel
+              key={currentScenarioId}
+              scenarioId={currentScenarioId}
+            />
+          </CatalogExplorer>
         </main>
         {props.renderScenarioPanel?.(session.onScenarioCompleted)}
       </ReplayHandoffContext.Provider>
