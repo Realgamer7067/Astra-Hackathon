@@ -22,8 +22,15 @@ export function App({
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const demo = state.status === "ready" ? state.demo : undefined;
+
+  const urlScenarioId =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("scenario_id") ||
+        new URLSearchParams(window.location.search).get("scenarioId")
+      : null;
+
   const currentScenarioId =
-    activeScenarioId ?? demo?.result.scenario_id ?? null;
+    activeScenarioId ?? urlScenarioId ?? demo?.result.scenario_id ?? null;
   const selected = demo?.objects.find((object) => object.id === selectedId);
   const selectedState = demo?.states.states.find(
     (sample) => sample.object_id === selectedId,

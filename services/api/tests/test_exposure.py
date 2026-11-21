@@ -15,6 +15,17 @@ import json
 import math
 
 import pytest
+from app.main import create_app
+from app.models.wire import (
+    CartesianState,
+    CloseApproach,
+    ForcedModification,
+    InertialState,
+    OccupancyBin,
+    Provenance,
+    ScenarioRequest,
+    ScenarioResult,
+)
 from app.physics.exposure import (
     R_EARTH_KM,
     compute_ground_projections,
@@ -29,6 +40,7 @@ from app.physics.screening import (
     screen_encounters,
 )
 from app.services.report import build_report
+from fastapi.testclient import TestClient
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -138,6 +150,46 @@ class TestScreeningBroadPhaseVsBruteForce:
 
         result = screen_encounters(frags, cands)
         assert len(result.encounters) == 0
+
+    def test_interior_approach_swept_filtering(self):
+        """Regression test: endpoints 200+ km apart but coincident at midpoint t=120s.
+
+        Fragment: (7000, -400, 0) -> (7000, 400, 0)
+        Candidate: (7600, -400, 0) -> (6400, 400, 0)
+        At t=0: sep = 600 km (different shells / rejected by discrete endpoints).
+        At t=240: sep = 600 km.
+        At t=120: sep = 0 km (coincident).
+        Conservative swept altitude interval filtering and relative-motion refinement
+        must detect this interior approach.
+        """
+        f0 = StateVector("frag-int", 0.0, 7000.0, -400.0, 0.0, 0.0, 0.0, 0.0)
+        f1 = StateVector("frag-int", 240.0, 7000.0, 400.0, 0.0, 0.0, 0.0, 0.0)
+
+        c0 = StateVector("cand-int", 0.0, 7600.0, -400.0, 0.0, 0.0, 0.0, 0.0)
+        c1 = StateVector("cand-int", 240.0, 6400.0, 400.0, 0.0, 0.0, 0.0, 0.0)
+
+        res = screen_encounters([f0, f1], [c0, c1])
+        assert len(res.encounters) >= 1
+        best = min(res.encounters, key=lambda e: e.separation_km)
+        assert best.catalog_object_id == "cand-int"
+        assert best.fragment_id == "frag-int"
+        assert abs(best.epoch_s - 120.0) < 1e-4
+        assert best.separation_km < 1e-4
+
+    def test_real_near_miss_interior_minimum(self):
+        """Interior minimum approach with non-zero near miss (e.g. 15 km separation)."""
+        # At t=0, sep = 200 km; at t=200, sep = 200 km; at t=100, sep = 15 km
+        f0 = StateVector("frag-nm", 0.0, 7000.0, -100.0, 0.0, 0.0, 0.0, 0.0)
+        f1 = StateVector("frag-nm", 200.0, 7000.0, 100.0, 0.0, 0.0, 0.0, 0.0)
+
+        c0 = StateVector("cand-nm", 0.0, 7015.0, -100.0, 200.0, 0.0, 0.0, 0.0)
+        c1 = StateVector("cand-nm", 200.0, 7015.0, 100.0, -200.0, 0.0, 0.0, 0.0)
+
+        res = screen_encounters([f0, f1], [c0, c1])
+        assert len(res.encounters) >= 1
+        best = min(res.encounters, key=lambda e: e.separation_km)
+        assert abs(best.epoch_s - 100.0) < 1e-4
+        assert abs(best.separation_km - 15.0) < 1e-2
 
     def test_max_encounters_cap(self):
         """Output is capped at limits.max_encounters."""
@@ -284,6 +336,34 @@ class TestGroundProjections:
         p = projections[0]
         assert abs(p.latitude_deg) < 1e-4
         assert abs(p.longitude_deg - expected_lon_deg) < 1e-4
+
+    def test_absolute_longitude_at_fixture_epoch(self):
+        """Regression test: GCRS (7000, 0, 0) at 2026-11-21T12:00:00Z yields ~119.84 deg E.
+
+        Matches standard IAU 2000 Earth Rotation Angle (ERA) conversion:
+        Days since J2000.0 (2000-01-01 12:00:00 UTC) = 9821.0.
+        ERA theta ~ 240.1589 deg.
+        GCRS +X rotated by -theta yields ITRS lon = +119.8411 deg E.
+        """
+        sv = StateVector(
+            object_id="f-gcrs",
+            epoch_s=0.0,
+            x=7000.0,
+            y=0.0,
+            z=0.0,
+            vx=0.0,
+            vy=0.0,
+            vz=0.0,
+        )
+        projections = compute_ground_projections(
+            [sv],
+            scenario_epoch_utc="2026-11-21T12:00:00Z",
+            is_inertial=True,
+        )
+        assert len(projections) == 1
+        p = projections[0]
+        assert abs(p.latitude_deg) < 1e-4
+        assert abs(p.longitude_deg - 119.8411) < 0.05
 
 
 # ===========================================================================
@@ -493,9 +573,6 @@ class TestResultsAPI:
 
     @pytest.fixture
     def client(self):
-        from app.main import create_app
-        from fastapi.testclient import TestClient
-
         with TestClient(create_app()) as test_client:
             yield test_client
 
@@ -553,19 +630,6 @@ class TestResultsAPI:
 
     def test_computed_run_data_used_in_results_and_report(self):
         """Computed runs (TASK-003) stored in app.state.runs are returned correctly."""
-        from app.main import create_app
-        from app.models.wire import (
-            CartesianState,
-            CloseApproach,
-            ForcedModification,
-            InertialState,
-            OccupancyBin,
-            Provenance,
-            ScenarioRequest,
-            ScenarioResult,
-        )
-        from fastapi.testclient import TestClient
-
         app = create_app()
 
         computed_result = ScenarioResult(
@@ -674,3 +738,68 @@ class TestResultsAPI:
             resp_unknown = test_client.get("/api/v1/scenarios/unknown-9999/results")
             assert resp_unknown.status_code == 404
             assert resp_unknown.json()["error"]["code"] == "SCENARIO_NOT_FOUND"
+
+            resp_unknown_report = test_client.get("/api/v1/scenarios/unknown-9999/report")
+            assert resp_unknown_report.status_code == 404
+            assert resp_unknown_report.json()["error"]["code"] == "SCENARIO_NOT_FOUND"
+
+    def test_scenario_jobs_result_only_preserves_seed_73(self):
+        """TASK-003 completed collision runs in app.state.scenario_jobs.
+
+        Result-only records carrying custom seeds (e.g. seed 73) must return 200
+        on /results, export seed 73 in /report (not default to 42), and preserve
+        all provenance and modification states.
+        """
+        app = create_app()
+        app.state.scenario_jobs = {
+            "job-task003-73": {
+                "scenario_id": "scenario-73",
+                "seed": 73,
+                "result": ScenarioResult(
+                    schema_version="1.0",
+                    generated_at_utc="2026-11-21T12:00:00Z",
+                    scenario_id="scenario-73",
+                    resolved_fragment_count=64,
+                    unresolved_mass_kg=25.0,
+                    modification=None,
+                    occupancy=[
+                        OccupancyBin(
+                            altitude_min_km=400.0,
+                            altitude_max_km=500.0,
+                            resolved_count=64,
+                        )
+                    ],
+                    encounters=[],
+                    entry_crossings=[],
+                    provenance=Provenance(
+                        kind="HYPOTHETICAL_SIMULATION",
+                        mode="LIVE",
+                        source="ASTRA Collision Worker (TASK-003)",
+                        catalogSnapshotId="sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        modelVersion="v1.0.0",
+                        coordinateFrame="GCRS",
+                        assumptions=["Physical conservation verified"],
+                        limitations=["Hypothetical debris only"],
+                    ),
+                ),
+            }
+        }
+
+        with TestClient(app) as client:
+            # 1. /results finds scenario via scenario_jobs
+            resp_res = client.get("/api/v1/scenarios/scenario-73/results")
+            assert resp_res.status_code == 200
+            res = resp_res.json()
+            assert res["scenario_id"] == "scenario-73"
+            assert res["resolved_fragment_count"] == 64
+            assert res["provenance"]["source"] == "ASTRA Collision Worker (TASK-003)"
+
+            # 2. /report exports seed 73
+            resp_rep = client.get("/api/v1/scenarios/scenario-73/report?format=json")
+            assert resp_rep.status_code == 200
+            rep = resp_rep.json()
+            assert rep["scenario_id"] == "scenario-73"
+            assert rep["seed"] == 73
+            assert len(rep["sections"]) > 0
+            assert rep["sections"][0]["provenance"]["kind"] == "HYPOTHETICAL_SIMULATION"
+            assert rep["sections"][0]["provenance"]["source"] == "ASTRA Collision Worker (TASK-003)"

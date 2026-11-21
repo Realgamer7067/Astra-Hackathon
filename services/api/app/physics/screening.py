@@ -139,6 +139,32 @@ def _altitude_km(sv: StateVector, r_earth_km: float = 6378.137) -> float:
     return sv.r_mag - r_earth_km
 
 
+def _swept_altitude_range(
+    s0: StateVector, s1: StateVector, r_earth_km: float = 6378.137
+) -> tuple[float, float]:
+    """Compute the minimum and maximum altitude (km) swept by an object over an interval [s0, s1]."""
+    dx = s1.x - s0.x
+    dy = s1.y - s0.y
+    dz = s1.z - s0.z
+    ds_sq = dx * dx + dy * dy + dz * dz
+
+    r0 = s0.r_mag
+    r1 = s1.r_mag
+    r_min = min(r0, r1)
+    r_max = max(r0, r1)
+
+    if ds_sq > 1e-12:
+        u_star = -(s0.x * dx + s0.y * dy + s0.z * dz) / ds_sq
+        if 0.0 < u_star < 1.0:
+            rx = s0.x + u_star * dx
+            ry = s0.y + u_star * dy
+            rz = s0.z + u_star * dz
+            r_crit = math.sqrt(rx * rx + ry * ry + rz * rz)
+            r_min = min(r_min, r_crit)
+
+    return r_min - r_earth_km, r_max - r_earth_km
+
+
 def _build_shell_index(
     states: Sequence[StateVector],
     bin_km: float,
@@ -204,10 +230,11 @@ def screen_encounters(
     if not sorted_epochs:
         return result
 
-    # Identify candidate pairs that are close enough at any sample epoch
-    # or whose interval bounding could bring them close
+    # Identify candidate pairs using conservative swept altitude bounds over intervals
+    # and discrete shell checks at common epochs
     candidate_pairs: set[tuple[str, str]] = set()
 
+    # 1. Discrete epoch shell checks
     for epoch in sorted_epochs:
         frags = frag_by_epoch[epoch]
         cands = cand_by_epoch[epoch]
@@ -221,6 +248,41 @@ def screen_encounters(
                 for frag in shell_frags:
                     for cand in neighbor_cands:
                         candidate_pairs.add((frag.object_id, cand.object_id))
+
+    # 2. Swept interval bounds across matching consecutive epochs
+    for i in range(len(sorted_epochs) - 1):
+        t0 = sorted_epochs[i]
+        t1 = sorted_epochs[i + 1]
+
+        # Find fragments and candidates present at both t0 and t1
+        frags_at_t0 = {sv.object_id: sv for sv in frag_by_epoch[t0]}
+        frags_at_t1 = {sv.object_id: sv for sv in frag_by_epoch[t1]}
+        common_frag_ids = set(frags_at_t0) & set(frags_at_t1)
+
+        cands_at_t0 = {sv.object_id: sv for sv in cand_by_epoch[t0]}
+        cands_at_t1 = {sv.object_id: sv for sv in cand_by_epoch[t1]}
+        common_cand_ids = set(cands_at_t0) & set(cands_at_t1)
+
+        if not common_frag_ids or not common_cand_ids:
+            continue
+
+        # Bucket candidates by all shells their interval spans
+        cand_swept_buckets: dict[int, list[str]] = {}
+        for c_id in common_cand_ids:
+            c_min_alt, c_max_alt = _swept_altitude_range(cands_at_t0[c_id], cands_at_t1[c_id])
+            b_start = int(c_min_alt // limits.broad_phase_bin_km) - 1
+            b_end = int(c_max_alt // limits.broad_phase_bin_km) + 1
+            for b in range(b_start, b_end + 1):
+                cand_swept_buckets.setdefault(b, []).append(c_id)
+
+        # Check fragment swept intervals against candidate swept buckets
+        for f_id in common_frag_ids:
+            f_min_alt, f_max_alt = _swept_altitude_range(frags_at_t0[f_id], frags_at_t1[f_id])
+            b_start = int(f_min_alt // limits.broad_phase_bin_km)
+            b_end = int(f_max_alt // limits.broad_phase_bin_km)
+            for b in range(b_start, b_end + 1):
+                for c_id in cand_swept_buckets.get(b, []):
+                    candidate_pairs.add((f_id, c_id))
 
     all_encounters: list[ScreenedEncounter] = []
 

@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 
 from .screening import StateVector
 
@@ -21,6 +22,38 @@ from .screening import StateVector
 R_EARTH_KM = 6378.137
 ENTRY_THRESHOLD_KM = 120.0  # default atmospheric entry threshold
 EARTH_ROTATION_RATE_RAD_S = 7.2921159e-5  # WGS-84 Earth angular velocity (rad/s)
+J2000_EPOCH = datetime(2000, 1, 1, 12, 0, 0, tzinfo=UTC)
+DEFAULT_SCENARIO_EPOCH_UTC = "2026-11-21T12:00:00Z"
+
+
+def earth_rotation_angle_rad(
+    epoch: datetime | str | None = None,
+    epoch_s: float = 0.0,
+) -> float:
+    """Compute Earth Rotation Angle (ERA) in radians per IAU 2000.
+
+    Theta(Tu) = 2*pi * (0.7790572732640 + 1.00273781191135448 * Tu) mod (2*pi)
+    where Tu = JD_UT1 - 2451545.0 (days since J2000.0 12:00:00 UTC).
+    """
+    if epoch is None:
+        epoch = DEFAULT_SCENARIO_EPOCH_UTC
+    if isinstance(epoch, str):
+        epoch_str = epoch.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(epoch_str)
+    else:
+        dt = epoch
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+
+    if epoch_s != 0.0:
+        dt = dt + timedelta(seconds=epoch_s)
+
+    days_since_j2000 = (dt - J2000_EPOCH).total_seconds() / 86400.0
+    theta = (2.0 * math.pi * ((0.7790572732640 + 1.00273781191135448 * days_since_j2000) % 1.0)) % (
+        2.0 * math.pi
+    )
+    return theta
 
 
 def gmst_rad(epoch_s: float, gmst0_rad: float = 0.0) -> float:
@@ -166,13 +199,17 @@ def compute_occupancy(
 
 def compute_ground_projections(
     fragment_states: Sequence[StateVector],
-    gmst0_rad: float = 0.0,
+    gmst0_rad: float | None = None,
+    scenario_epoch_utc: datetime | str | None = None,
     is_inertial: bool = True,
 ) -> list[GroundProjection]:
     """Compute sub-satellite ground projections for all fragment states.
 
     If ``is_inertial=True`` (default), states in GCRS are transformed to Earth-fixed
-    ITRS coordinates accounting for Earth rotation at each sample's ``epoch_s``.
+    ITRS coordinates accounting for Earth rotation at each sample's epoch.
+    When ``scenario_epoch_utc`` is provided, the IAU 2000 Earth Rotation Angle (ERA)
+    is evaluated at the sample's timestamp. If ``gmst0_rad`` is provided, linear
+    rotation is used instead.
 
     These are orbital projections ONLY. They are computed independently
     from entry-crossing flags. A ground projection does NOT imply
@@ -181,7 +218,12 @@ def compute_ground_projections(
     projections: list[GroundProjection] = []
     for sv in fragment_states:
         if is_inertial:
-            theta = gmst_rad(sv.epoch_s, gmst0_rad)
+            if scenario_epoch_utc is not None:
+                theta = earth_rotation_angle_rad(scenario_epoch_utc, sv.epoch_s)
+            elif gmst0_rad is not None:
+                theta = gmst_rad(sv.epoch_s, gmst0_rad)
+            else:
+                theta = earth_rotation_angle_rad(DEFAULT_SCENARIO_EPOCH_UTC, sv.epoch_s)
             x_itrs, y_itrs, z_itrs = gcrs_to_itrs(sv.x, sv.y, sv.z, theta)
         else:
             x_itrs, y_itrs, z_itrs = sv.x, sv.y, sv.z
@@ -207,7 +249,8 @@ def compute_ground_projections(
 def detect_entry_crossings(
     fragment_time_series: dict[str, list[StateVector]],
     threshold_km: float = ENTRY_THRESHOLD_KM,
-    gmst0_rad: float = 0.0,
+    gmst0_rad: float | None = None,
+    scenario_epoch_utc: datetime | str | None = None,
     is_inertial: bool = True,
 ) -> list[EntryCrossing]:
     """Detect fragments whose altitude crosses below ``threshold_km``.
@@ -225,7 +268,12 @@ def detect_entry_crossings(
             alt = _altitude_km(sv)
             if prev_alt is not None and prev_alt >= threshold_km and alt < threshold_km:
                 if is_inertial:
-                    theta = gmst_rad(sv.epoch_s, gmst0_rad)
+                    if scenario_epoch_utc is not None:
+                        theta = earth_rotation_angle_rad(scenario_epoch_utc, sv.epoch_s)
+                    elif gmst0_rad is not None:
+                        theta = gmst_rad(sv.epoch_s, gmst0_rad)
+                    else:
+                        theta = earth_rotation_angle_rad(DEFAULT_SCENARIO_EPOCH_UTC, sv.epoch_s)
                     x_itrs, y_itrs, z_itrs = gcrs_to_itrs(sv.x, sv.y, sv.z, theta)
                 else:
                     x_itrs, y_itrs, z_itrs = sv.x, sv.y, sv.z
@@ -255,7 +303,8 @@ def summarize_exposure(
     fragment_time_series: dict[str, list[StateVector]] | None = None,
     bin_size_km: float = 100.0,
     entry_threshold_km: float = ENTRY_THRESHOLD_KM,
-    gmst0_rad: float = 0.0,
+    gmst0_rad: float | None = None,
+    scenario_epoch_utc: datetime | str | None = None,
     is_inertial: bool = True,
     known_entry_crossings: list[EntryCrossing] | None = None,
 ) -> ExposureSummary:
@@ -282,7 +331,10 @@ def summarize_exposure(
 
     summary.occupancy = compute_occupancy(fragment_states, bin_size_km)
     summary.ground_projections = compute_ground_projections(
-        fragment_states, gmst0_rad=gmst0_rad, is_inertial=is_inertial
+        fragment_states,
+        gmst0_rad=gmst0_rad,
+        scenario_epoch_utc=scenario_epoch_utc,
+        is_inertial=is_inertial,
     )
 
     if known_entry_crossings is not None:
@@ -292,6 +344,7 @@ def summarize_exposure(
             fragment_time_series,
             threshold_km=entry_threshold_km,
             gmst0_rad=gmst0_rad,
+            scenario_epoch_utc=scenario_epoch_utc,
             is_inertial=is_inertial,
         )
 
