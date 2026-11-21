@@ -1,0 +1,50 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials.json
+secrets.json
+
+# Python / JS / build caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+node_modules/
+dist/
+build/
+coverage/
+.next/
+.nuxt/
+.turbo/
+.cache/
+*.log
+
+# Editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Team skills in .agents/skills/ are tracked. Keep personal tool installs local.
+.claude/skills/
+.opencode/skills/
+.gemini/skills/
+.cursor/skills/
+.claude/settings.local.json
+.agents/local/
+.codex/
+.aider*
+
+# Scratch and demo captures (explicitly add real assets when needed)
+tmp/
+temp/
+.scratch/
+

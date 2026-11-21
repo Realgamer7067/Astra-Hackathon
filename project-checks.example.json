@@ -1,0 +1,12 @@
+{
+  "note": "COPY to project-checks.json after stack selection; replace each array with real commands. Do not treat these examples as runnable defaults.",
+  "commands": {
+    "format": ["npm", "run", "format:check"],
+    "lint": ["npm", "run", "lint"],
+    "typecheck": ["npm", "run", "typecheck"],
+    "unit": ["npm", "run", "test:unit"],
+    "integration": ["npm", "run", "test:integration"],
+    "security": ["npm", "run", "security:check"],
+    "build": ["npm", "run", "build"]
+  }
+}

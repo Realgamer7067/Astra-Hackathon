@@ -1,0 +1,8 @@
+---
+description: Canonical hackathon project instructions, collaboration and task lifecycle
+alwaysApply: true
+---
+
+Read the root `AGENTS.md` and the files it references before editing code.
+Follow the role explicitly selected by the human. Do not replace or override the project's task ownership and PR review workflow.
+
