@@ -13,21 +13,29 @@ ROOT = Path(__file__).resolve().parents[1] / "tasks"
 STATES = ("planned", "ready", "active", "review", "blocked", "done")
 
 
-def find_card(task_id: str, root: Path = ROOT) -> tuple[str, Path]:
+def matching_cards(task_id: str, root: Path) -> list[tuple[str, Path]]:
     if not re.fullmatch(r"TASK-\d{3,}", task_id):
         raise ValueError("Use an ID such as TASK-001")
-    results = [(state, file) for state in STATES for file in (root / state).glob(f"{task_id}-*.md")]
+    return [
+        (state, file)
+        for state in STATES
+        for pattern in (f"{task_id}.md", f"{task_id}-*.md")
+        for file in (root / state).glob(pattern)
+        if file.is_file()
+    ]
+
+
+def find_card(task_id: str, root: Path = ROOT) -> tuple[str, Path]:
+    results = matching_cards(task_id, root)
     if len(results) != 1:
         raise ValueError(f"Expected exactly one card for {task_id}; found {len(results)}")
     return results[0]
 
 
 def new_card(task_id: str, title: str, root: Path = ROOT) -> Path:
-    if not re.fullmatch(r"TASK-\d{3,}", task_id):
-        raise ValueError("Use an ID such as TASK-001")
     if "\n" in title or "\r" in title:
         raise ValueError("Task title must be a single line")
-    if any(any((root / state).glob(f"{task_id}-*.md")) for state in STATES):
+    if matching_cards(task_id, root):
         raise ValueError(f"{task_id} already exists")
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60]
     if not slug:

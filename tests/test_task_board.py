@@ -38,6 +38,17 @@ class TaskBoardTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tasks.new_card("TASK-007", "Other", self.root)
 
+    def test_short_filename_can_be_claimed_and_blocks_duplicate_creation(self):
+        card = self.root / "ready" / "TASK-001.md"
+        card.write_text("# TASK-001: Foundation\n\n- **Owner:** unclaimed\n", encoding="utf-8")
+
+        active = tasks.relocate("TASK-001", "active", owner="alex", root=self.root)
+        self.assertEqual(active, self.root / "active" / card.name)
+        self.assertIn("**Owner:** alex", active.read_text(encoding="utf-8"))
+        self.assertFalse(card.exists())
+        with self.assertRaisesRegex(ValueError, "already exists"):
+            tasks.new_card("TASK-001", "Duplicate", self.root)
+
     def test_blocked_requires_reason(self):
         tasks.new_card("TASK-002", "API", self.root)
         with self.assertRaises(ValueError):
