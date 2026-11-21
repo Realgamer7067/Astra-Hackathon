@@ -88,6 +88,12 @@ export default function EarthView({
     points.current = instance.scene.primitives.add(
       new PointPrimitiveCollection(),
     );
+    replayCollection.current = instance.scene.primitives.add(
+      new PointPrimitiveCollection(),
+    );
+    burstCollection.current = instance.scene.primitives.add(
+      new PointPrimitiveCollection(),
+    );
     reset(instance);
     setAvailable(true);
     const removeError = instance.scene.renderError.addEventListener(() => {

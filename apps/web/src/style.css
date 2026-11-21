@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   font-family: "Aptos", "Segoe UI", sans-serif;
   color: #eaf0f6;
   background: #0d151f;
@@ -266,12 +266,19 @@ footer {
   }
 }
 
-.replay-bar { position: absolute; left: 1rem; right: 1rem; bottom: 2.2rem; display: grid; gap: .5rem; max-width: 46rem; }
+.replay-bar { position: absolute; left: 1rem; right: 1rem; bottom: 72px; display: grid; gap: .4rem; max-width: 46rem; padding: .6rem .8rem; background: rgba(9,15,23,.88); border: 1px solid #22455e; border-radius: .5rem; z-index: 2; }
 .preview-toggle { color: #c8d2e0; font-size: .85rem; display: flex; gap: .5rem; align-items: center; }
 .synthetic-badge { margin: 0; color: #ffb454; font-size: .8rem; letter-spacing: .04em; }
-.timeline { display: grid; gap: .4rem; padding: .6rem .8rem; background: rgba(9,15,23,.85); border: 1px solid #22455e; border-radius: .5rem; }
+.timeline { display: grid; gap: .4rem; }
 .timeline-buttons { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 .timeline input[type="range"] { width: 100%; }
 .timeline output { color: #c8d2e0; font-size: .8rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .effect-note { margin: 0; color: #8fa3b8; font-size: .75rem; }
+
+@media (max-width: 700px) {
+  .replay-bar { left: .5rem; right: .5rem; bottom: 64px; padding: .45rem .6rem; gap: .3rem; }
+  .effect-note { display: none; }
+  .synthetic-badge { font-size: .7rem; }
+}
+
