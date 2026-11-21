@@ -6,6 +6,8 @@ import {
   loadDemo,
   utcLabel,
 } from "./demo";
+import { ResultsPanel } from "../features/results";
+import "../features/results/results.css";
 
 const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
@@ -137,6 +139,7 @@ export function App() {
               <p>Select an object to see its example position.</p>
             )}
           </div>
+          <ResultsPanel scenarioId={demo?.result.scenario_id ?? null} />
         </aside>
       </main>
       <footer>

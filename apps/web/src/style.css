@@ -141,6 +141,8 @@ button:focus-visible {
 .catalog {
   padding: 25px 20px;
   border-left: 1px solid var(--line);
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
 }
 .catalog-header {
   display: flex;

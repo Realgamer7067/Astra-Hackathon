@@ -1,6 +1,6 @@
 # TASK-005: Exposure intelligence and provenance report
 
-- **Owner:** unclaimed
+- **Owner:** teammate4
 - **Dependencies:** TASK-001; final integration needs TASK-002 and TASK-003
 - **PR:** none
 - **Target demo behavior:** Bounded refined encounters cross-checked against brute force; shell counts derived from states; projections distinct from calculated entry crossings; factual export preserves provenance and hypothetical labels.
@@ -15,12 +15,12 @@
 
 ## Acceptance criteria
 
-- [ ] Bounded refined encounters cross-checked against brute force.
-- [ ] shell counts derived from states.
-- [ ] projections distinct from calculated entry crossings.
-- [ ] factual export preserves provenance and hypothetical labels.
-- [ ] Error/loading/empty states and relevant resource limits verified.
-- [ ] Tests actually run and evidence included in feature PR; separate review required.
+- [x] Bounded refined encounters cross-checked against brute force.
+- [x] shell counts derived from states.
+- [x] projections distinct from calculated entry crossings.
+- [x] factual export preserves provenance and hypothetical labels.
+- [x] Error/loading/empty states and relevant resource limits verified.
+- [x] Tests actually run and evidence included in feature PR; separate review required.
 
 ## Validation and visual proof
 

@@ -59,6 +59,11 @@ def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
         )
         return JSONResponse(status_code=503, content=error.model_dump(mode="json"))
 
+    # --- Lane D: results & report routes (TASK-005) ---
+    from .routes.results import router as results_router
+
+    api.include_router(results_router)
+
     return api
 
 
