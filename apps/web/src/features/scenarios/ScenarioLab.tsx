@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { type DemoBundle, kindLabels } from "../../app/demo";
 import {
   cancelJob,
@@ -19,7 +20,13 @@ function message(error: unknown) {
     : "The simulation request failed.";
 }
 
-export function ScenarioLab({ demo }: { demo: DemoBundle }) {
+export function ScenarioLab({
+  demo,
+  demoActionHost,
+}: {
+  demo: DemoBundle;
+  demoActionHost?: HTMLElement | null;
+}) {
   const objects = demo.objects.filter((object) =>
     demo.states.states.some((state) => state.object_id === object.id),
   );
@@ -31,6 +38,7 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
   const [sampleIndex, setSampleIndex] = useState(0);
   const [pageCursor, setPageCursor] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  const [demoRun, setDemoRun] = useState(false);
   const [cancelPending, setCancelPending] = useState(false);
   const [loadingPage, setLoadingPage] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +81,7 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
       },
       requested_products: ["TRAJECTORIES", "ENTRY_CROSSINGS"],
     };
+    setDemoRun(false);
     await runScenario(scenario);
   }
 
@@ -125,6 +134,7 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
   }
 
   function runEntryDemo() {
+    setDemoRun(true);
     void runScenario({
       schema_version: "1.0",
       type: "FORCED_HYPOTHETICAL",
@@ -184,6 +194,20 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
     }
   }
 
+  const demoButton = (
+    <button
+      type="button"
+      className="entry-demo-button"
+      onClick={runEntryDemo}
+      disabled={busy || loadingPage}
+    >
+      {demoRun && busy
+        ? "Running asteroid demo…"
+        : "Run fictional asteroid entry demo"}
+      <span aria-hidden="true">↗</span>
+    </button>
+  );
+
   return (
     <section
       className="scenario-lab"
@@ -199,13 +223,15 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
         epoch. Both keep their original velocities.
       </p>
       <div className="entry-demo">
-        <button
-          type="button"
-          onClick={runEntryDemo}
-          disabled={busy || loadingPage}
-        >
-          Run fictional asteroid entry demo
-        </button>
+        {demoActionHost
+          ? createPortal(
+              <>
+                {demoButton}
+                {demoRun && error && <p role="alert">{error}</p>}
+              </>,
+              demoActionHost,
+            )
+          : demoButton}
         <p>
           500 kg satellite and 800 kg fictional asteroid. Tracking stops at the
           120 km boundary.

@@ -66,6 +66,9 @@ export function App(
   }>();
   const lastStarted = useRef<string | null>(null);
   const viewport = useRef<HTMLElement>(null);
+  const [demoActionHost, setDemoActionHost] = useState<HTMLDivElement | null>(
+    null,
+  );
   const [entryFocus, setEntryFocus] = useState<{
     scenarioId: string;
     entry: EntryCrossing;
@@ -178,6 +181,11 @@ export function App(
   );
   const firstEntryMs = firstEntry ? Date.parse(firstEntry.at_utc) : null;
   const { clock, reset, pause, seek, play, setSpeed } = session.replay;
+  const entryStill =
+    stage === "entry" &&
+    showEntryMap &&
+    !clock.playing &&
+    clock.timeMs === firstEntryMs;
 
   const watchCollision = useCallback(
     (scenarioId: string) => {
@@ -185,7 +193,9 @@ export function App(
       setEntryFocus(undefined);
       setShowEntryMap(true);
       setPresentation({ scenarioId, stage: "approach" });
-      viewport.current?.scrollIntoView({ block: "start" });
+      const bounds = viewport.current?.getBoundingClientRect();
+      if (bounds && (bounds.top < 0 || bounds.top >= window.innerHeight))
+        viewport.current?.scrollIntoView({ block: "start" });
     },
     [reset],
   );
@@ -286,75 +296,80 @@ export function App(
             className="viewport"
             aria-labelledby="scene-title"
           >
-            <Suspense
-              fallback={
-                <p className="globe-state" role="status">
-                  Loading Earth…
+            <div className="scene-pane">
+              <Suspense
+                fallback={
+                  <p className="globe-state" role="status">
+                    Loading Earth…
+                  </p>
+                }
+              >
+                <Globe
+                  states={renderStates?.states}
+                  objects={catalogObjects}
+                  selectedId={selectedId}
+                  replayPositions={
+                    session.replayable && !prelude && !entryStill
+                      ? session.replay.positions
+                      : undefined
+                  }
+                  impact={
+                    stage === "approach" && session.impact
+                      ? { ...session.impact, ageMs: null }
+                      : session.impact
+                  }
+                  tracks={prelude || entryStill ? undefined : tracks}
+                  approach={
+                    stage === "approach" ? (approach ?? undefined) : undefined
+                  }
+                  onApproachComplete={arriveAtContact}
+                  collisionCue={stage === "contact"}
+                  followDebris={stage === "debris" && clock.playing}
+                  entryCells={
+                    showEntryMap && (!stage || stage === "entry")
+                      ? entryCells
+                      : undefined
+                  }
+                  entryFocus={entryFocusForRun}
+                  entryOverview={stage === "entry" ? entryCells : undefined}
+                  focusToken={session.focusToken}
+                  lowGraphics={lowGraphics}
+                />
+              </Suspense>
+              <div className="scene-label">
+                <h1 id="scene-title">Earth orbit</h1>
+                <p>
+                  {renderStates
+                    ? `Snapshot · ${utcLabel(renderStates.at_utc)}`
+                    : "Awaiting orbital snapshot"}
                 </p>
-              }
-            >
-              <Globe
-                states={renderStates?.states}
-                objects={catalogObjects}
-                selectedId={selectedId}
-                replayPositions={
-                  session.replayable && !prelude
-                    ? session.replay.positions
-                    : undefined
-                }
-                impact={
-                  stage === "approach" && session.impact
-                    ? { ...session.impact, ageMs: null }
-                    : session.impact
-                }
-                tracks={prelude ? undefined : tracks}
-                approach={
-                  stage === "approach" ? (approach ?? undefined) : undefined
-                }
-                onApproachComplete={arriveAtContact}
-                collisionCue={stage === "contact"}
-                followDebris={stage === "debris" && clock.playing}
-                entryCells={
-                  showEntryMap && (!stage || stage === "entry")
-                    ? entryCells
-                    : undefined
-                }
-                entryFocus={entryFocusForRun}
-                entryOverview={stage === "entry" ? entryCells : undefined}
-                focusToken={session.focusToken}
-                lowGraphics={lowGraphics}
-              />
-            </Suspense>
-            <div className="scene-label">
-              <h1 id="scene-title">Earth orbit</h1>
-              <p>
-                {renderStates
-                  ? `${utcLabel(renderStates.at_utc)} · visual sizes exaggerated`
-                  : "Awaiting orbital snapshot"}
-              </p>
-              {stage && (
-                <div
-                  className="replay-stage"
-                  role="status"
-                  data-replay-stage={stage}
-                >
-                  <strong>{stageTitles[stage]}</strong>
-                  {stage === "approach" && (
-                    <span>
-                      Illustrative approach · cyan target · amber incoming body
-                    </span>
-                  )}
-                  {stage === "contact" && (
-                    <span>Forced contact · simulated breakup begins</span>
-                  )}
-                  {stage === "debris" && (
-                    <span>Computed 3D fragment paths</span>
-                  )}
-                  {stage === "entry" && (
-                    <span>Modeled crossings at 120 km</span>
-                  )}
-                </div>
-              )}
+                {demo && !props.renderScenarioPanel && (
+                  <div ref={setDemoActionHost} className="scene-actions" />
+                )}
+                {stage && (
+                  <div
+                    className="replay-stage"
+                    role="status"
+                    data-replay-stage={stage}
+                  >
+                    <strong>{stageTitles[stage]}</strong>
+                    {stage === "approach" && (
+                      <span>
+                        Illustrative approach · models enlarged for visibility
+                      </span>
+                    )}
+                    {stage === "contact" && (
+                      <span>Forced contact · simulated breakup begins</span>
+                    )}
+                    {stage === "debris" && (
+                      <span>Computed 3D fragment paths</span>
+                    )}
+                    {stage === "entry" && (
+                      <span>Modeled crossings at 120 km</span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <ReplayBar
               session={session}
@@ -432,7 +447,12 @@ export function App(
         </main>
         {props.renderScenarioPanel
           ? props.renderScenarioPanel(session.onScenarioCompleted)
-          : demo && <ScenarioLab demo={demo} />}
+          : demo && (
+              <ScenarioLab
+                demo={demo}
+                demoActionHost={stage ? null : demoActionHost}
+              />
+            )}
       </ReplayHandoffContext.Provider>
       <footer>
         Educational research simulation. Catalog positions are estimates;

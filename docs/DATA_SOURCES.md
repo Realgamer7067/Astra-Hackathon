@@ -54,17 +54,29 @@ Treat the above as starting points and verify their current APIs before coding. 
 
 The globe uses the July 2004 global Blue Marble Next Generation composite with
 topography and bathymetry, credited to NASA Earth Observatory. Its geographic
-tile pyramid contains 170 WebP tiles at 512 × 512 pixels and about 3.2 MB in total.
-Cesium loads only the tiles needed for the current view. The highest level covers
-8,192 × 4,096 pixels globally. The existing Natural Earth II image remains the
-local fallback. The Earth surface stays a WGS84 ellipsoid with shaded imagery.
-[Source and credits](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/)
+tile pyramid contains 682 WebP tiles at 512 × 512 pixels. Cesium loads tiles
+on demand, up to a global equivalent of 16,384 × 8,192 pixels. Natural Earth II
+is the local fallback. The surface is a WGS84 ellipsoid with shaded imagery.
+[Blue Marble source and credits](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-topography-bathymetry/)
 
-To regenerate the asset set, use the 21,600 × 10,800 global JPEG for July at the
+To regenerate the tiles, use the 21,600 × 10,800 global JPEG for July at the
 source above. Its SHA-256 is
 `d225f1f35a6448a4d1d8f6de6e48f3433e470085b70a35800e64f384f269a7b0`.
-Downsample the map to 8,192 × 4,096 with Lanczos filtering, and generate levels 0
-through 3 at 1,024, 2,048, 4,096 and 8,192 pixels wide. Split each level into
-512-pixel square tiles, encode with WebP quality 83, and write the tiles to
-`apps/web/public/blue-marble/{z}/{x}/{y}.webp`. Tile coordinates start at the
-northwest corner and increase east and south.
+Use Lanczos downsampling for levels 0–4 at 1,024, 2,048, 4,096, 8,192 and
+16,384 pixels wide. Split each level into 512-pixel square tiles, ordered east
+and south from the northwest corner. Encode at WebP quality 83 for levels 0–3
+and 72 for level 4. Store the tiles at
+`apps/web/public/blue-marble/{z}/{x}/{y}.webp`.
+
+The wide orbit view also uses a static NOAA Climate Prediction Center cloud
+frame from NASA's Scientific Visualization Studio, dated June 2, 2014, at
+00:00 UTC. The local 3,072 × 1,536 WebP uses a white cloud color and the source
+alpha mask with a low-opacity threshold and a taper near the latitude coverage
+edge. The layer fades at close range so the entry map stays legible.
+[Cloud layer source and credits](https://svs.gsfc.nasa.gov/4439/)
+[Original frame](https://svs.gsfc.nasa.gov/vis/a000000/a004400/a004439/frames/4096x2048_1x1_30p/clouds_cpc/flat_cpc_clouds_4096x2048.01000.tif)
+
+Globe lighting follows the camera for readability. The cloud layer and lighting
+are illustrative. The satellite and asteroid models are original ASTRA assets.
+Rebuild them with `python scripts/build_replay_models.py`. The renderer enlarges
+them to make the approach visible.

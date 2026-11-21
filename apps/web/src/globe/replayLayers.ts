@@ -167,10 +167,11 @@ export function focusReplay(
   point: Vec3 | Cartesian3,
   duration: number,
   range = 1_550_000,
+  heading = 0.35,
 ) {
   const center = Array.isArray(point) ? Cartesian3.fromArray(point) : point;
   camera.flyToBoundingSphere(new BoundingSphere(center, 210_000), {
     duration,
-    offset: new HeadingPitchRange(0.35, -0.32, range),
+    offset: new HeadingPitchRange(heading, -0.32, range),
   });
 }

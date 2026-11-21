@@ -6,6 +6,7 @@ import {
   Color,
   Credit,
   CreditDisplay,
+  DirectionalLight,
   GeographicTilingScheme,
   HeadingPitchRange,
   LabelCollection,
@@ -15,14 +16,16 @@ import {
   PointPrimitive,
   PointPrimitiveCollection,
   PolylineCollection,
+  SingleTileImageryProvider,
   type Primitive,
   TileMapServiceImageryProvider,
+  Transforms,
   UrlTemplateImageryProvider,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { showApproach, type ApproachBody } from "./approachActors";
 import { burstCount, burstParticles } from "./effects";
 import type { EntryCrossing } from "../features/results/api";
-import type { Vec3 } from "../timeline/interpolation";
 import type { EntryCell, FragmentTrack } from "../timeline/entryReplay";
 import {
   drawTracks,
@@ -58,7 +61,7 @@ type Props = {
   entryOverview?: EntryCell[];
   collisionCue?: boolean;
   followDebris?: boolean;
-  approach?: readonly { position: Vec3 }[];
+  approach?: readonly [ApproachBody, ApproachBody];
   onApproachComplete: () => void;
   lowGraphics?: boolean;
 };
@@ -71,7 +74,8 @@ const prefersReducedMotion = () =>
 
 function reset(widget: CesiumWidget) {
   widget.camera.setView({
-    destination: Cartesian3.fromDegrees(65, 23, 18_000_000),
+    destination: Cartesian3.fromDegrees(52, 22, 15_600_000),
+    orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 },
   });
   widget.scene.requestRender();
 }
@@ -118,7 +122,6 @@ export default function EarthView({
       CreditDisplay.cesiumCredit = new Credit("CesiumJS");
       instance = new CesiumWidget(host.current, {
         baseLayer: false,
-        skyBox: false,
         scene3DOnly: true,
         requestRenderMode: true,
         // Render at device resolution (capped) instead of CSS pixels so the
@@ -134,9 +137,39 @@ export default function EarthView({
     instance.resolutionScale = renderScale(false);
     instance.scene.postProcessStages.fxaa.enabled = true;
     const stopFps = trackFps(instance, fpsLabel.current);
-    instance.scene.backgroundColor = Color.fromCssColorString("#090f17");
-    if (instance.scene.globe)
-      instance.scene.globe.baseColor = Color.fromCssColorString("#22455e");
+    const { scene, camera } = instance;
+    scene.backgroundColor = Color.fromCssColorString("#060a10");
+    if (scene.sun) scene.sun.show = false;
+    if (scene.moon) scene.moon.show = false;
+    if (scene.globe) {
+      scene.globe.baseColor = Color.fromCssColorString("#173953");
+      scene.globe.enableLighting = true;
+      scene.globe.lightingFadeInDistance = 16_000_000;
+      scene.globe.lightingFadeOutDistance = 8_000_000;
+      scene.globe.nightFadeInDistance = 16_000_000;
+      scene.globe.nightFadeOutDistance = 8_000_000;
+    }
+    const light = new DirectionalLight({ direction: camera.directionWC });
+    scene.light = light;
+    const offset = new Cartesian3();
+    let clouds: ImageryLayer | undefined;
+    const updateLight = () => {
+      // Keep a consistent, readable light angle as the camera changes views.
+      Cartesian3.multiplyByScalar(camera.rightWC, 0.88, light.direction);
+      Cartesian3.multiplyByScalar(camera.upWC, -0.56, offset);
+      Cartesian3.add(light.direction, offset, light.direction);
+      Cartesian3.add(light.direction, camera.directionWC, light.direction);
+      Cartesian3.normalize(light.direction, light.direction);
+      if (clouds) {
+        const height = camera.positionCartographic.height;
+        clouds.alpha = Math.min(
+          0.86,
+          Math.max(0, (height - 2_500_000) / 5_000_000),
+        );
+      }
+    };
+    updateLight();
+    const removeLightUpdate = scene.preUpdate.addEventListener(updateLight);
     points.current = instance.scene.primitives.add(
       new PointPrimitiveCollection(),
     );
@@ -167,7 +200,7 @@ export default function EarthView({
       tilingScheme: new GeographicTilingScheme(),
       tileWidth: 512,
       tileHeight: 512,
-      maximumLevel: 3,
+      maximumLevel: 4,
       hasAlphaChannel: false,
       enablePickFeatures: false,
       credit: new Credit(
@@ -175,7 +208,11 @@ export default function EarthView({
         true,
       ),
     });
-    const layer = new ImageryLayer(imagery);
+    const layer = new ImageryLayer(imagery, {
+      saturation: 1.12,
+      contrast: 1.13,
+      brightness: 1.08,
+    });
     const removeImageryError = imagery.errorEvent.addEventListener(() => {
       if (instance.isDestroyed() || !instance.scene.imageryLayers.remove(layer))
         return;
@@ -185,7 +222,7 @@ export default function EarthView({
       )
         .then((fallback) => {
           if (instance.isDestroyed()) return;
-          instance.scene.imageryLayers.add(new ImageryLayer(fallback));
+          instance.scene.imageryLayers.add(new ImageryLayer(fallback), 0);
           instance.scene.requestRender();
         })
         .catch(() => {
@@ -195,10 +232,27 @@ export default function EarthView({
             );
         });
     });
-    instance.scene.imageryLayers.add(layer);
-    instance.scene.requestRender();
+    scene.imageryLayers.add(layer);
+    void SingleTileImageryProvider.fromUrl("/earth/archived-clouds.webp", {
+      credit: new Credit(
+        '<a href="https://svs.gsfc.nasa.gov/4439/" target="_blank" rel="noopener noreferrer">NOAA / NASA SVS · Archived clouds</a>',
+        true,
+      ),
+    })
+      .then((provider) => {
+        if (instance.isDestroyed()) return;
+        clouds = new ImageryLayer(provider);
+        scene.imageryLayers.add(clouds);
+        updateLight();
+        scene.requestRender();
+      })
+      .catch(() => {
+        // The base map remains available if the optional cloud overlay fails.
+      });
+    scene.requestRender();
     return () => {
       stopFps();
+      removeLightUpdate();
       removeError();
       removeImageryError();
       approachPoints.current = null;
@@ -376,49 +430,55 @@ export default function EarthView({
     instance.scene.requestRender();
   }, [available, entryFocus, entryOverview]);
 
+  const catalogForApproach = useRef(objects);
+  catalogForApproach.current = objects;
   const contact = impact?.position;
   useEffect(() => {
     const points = approachPoints.current;
     const instance = widget.current;
     if (!available || !instance || !points || !approach || !contact) return;
     const target = Cartesian3.fromArray(contact);
-    focusReplay(instance.camera, target, 0, 2_800_000);
-    const actors = approach.map(({ position }, index) => {
-      const start = Cartesian3.fromArray(position);
-      const color = index === 0 ? Color.CYAN : Color.ORANGE;
-      return {
-        start,
-        marker: points.add({
-          position: start,
-          color,
-          pixelSize: 18,
-          outlineColor: Color.WHITE,
-          outlineWidth: 2,
-        }),
-      };
-    });
-    const duration = prefersReducedMotion() ? 1000 : 4200;
-    let frame = 0;
-    const started = performance.now();
-    const advance = (now: number) => {
-      const t = Math.min(1, (now - started) / duration);
-      for (const actor of actors) {
-        actor.marker.position = Cartesian3.lerp(
-          actor.start,
-          target,
-          t,
-          new Cartesian3(),
-        );
-      }
-      instance.scene.requestRender();
-      if (t < 1) frame = requestAnimationFrame(advance);
-      else approachComplete.current();
-    };
-    frame = requestAnimationFrame(advance);
-    return () => {
-      cancelAnimationFrame(frame);
-      if (!points.isDestroyed()) points.removeAll();
-    };
+    const first = Cartesian3.fromArray(approach[0].position);
+    const second = Cartesian3.fromArray(approach[1].position);
+    const midpoint = Cartesian3.midpoint(first, second, new Cartesian3());
+    const shotCenter = Cartesian3.midpoint(midpoint, target, midpoint);
+    // Look across the closing paths so one model does not hide the other.
+    const localFrame = Transforms.eastNorthUpToFixedFrame(shotCenter);
+    const separation = Matrix4.multiplyByPointAsVector(
+      Matrix4.inverseTransformation(localFrame, localFrame),
+      Cartesian3.subtract(second, first, new Cartesian3()),
+      new Cartesian3(),
+    );
+    const heading = Math.atan2(separation.y, -separation.x);
+    const portrait = instance.canvas.clientWidth < instance.canvas.clientHeight;
+    focusReplay(
+      instance.camera,
+      shotCenter,
+      0,
+      portrait ? 1_950_000 : 2_150_000,
+      heading,
+    );
+    const payloads = new Set(
+      catalogForApproach.current
+        ?.filter((object) => object.kind === "PAYLOAD")
+        .map((object) => object.id),
+    );
+    const urls = new Map<string, string>();
+    for (const { object_id } of approach) {
+      if (object_id === "DEMO:ASTEROID")
+        urls.set(object_id, "/models/asteroid.glb");
+      else if (object_id === "DEMO:004" || payloads.has(object_id))
+        urls.set(object_id, "/models/satellite.glb");
+    }
+    return showApproach(
+      instance.scene,
+      points,
+      approach,
+      target,
+      urls,
+      prefersReducedMotion(),
+      () => approachComplete.current(),
+    );
   }, [available, approach, contact]);
 
   useEffect(() => {

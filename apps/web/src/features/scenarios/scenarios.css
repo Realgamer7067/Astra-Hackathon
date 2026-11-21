@@ -1,5 +1,5 @@
 .scenario-lab {
-  padding: 24px clamp(16px, 4vw, 56px) 34px;
+  padding: 32px clamp(16px, 4vw, 56px) 40px;
   border-top: 1px solid var(--line);
 }
 .scenario-heading {
@@ -9,7 +9,9 @@
   gap: 8px 16px;
 }
 .scenario-heading h2 {
-  font-size: 22px;
+  font-size: 30px;
+  font-weight: 630;
+  letter-spacing: -0.035em;
   margin: 0;
 }
 .scenario-heading span {
@@ -58,11 +60,11 @@
 }
 .scenario-lab input:not([type="checkbox"], [type="range"]),
 .scenario-lab select,
-.scenario-lab button {
+.scenario-lab button:not(.entry-demo-button) {
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: 4px;
-  background: #14202d;
+  border-radius: 7px;
+  background: var(--panel-raised);
   min-width: 0;
 }
 .scenario-lab button {
