@@ -11,15 +11,34 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from .connectors.celestrak import CelesTrakConnector
 from .models.wire import DemoBundle, ErrorDetail, ErrorEnvelope, Health
+from .routes import catalog as catalog_routes
+from .routes import objects as object_routes
+from .storage.catalog_cache import CatalogRepository
 
 ROOT = Path(__file__).resolve().parents[3]
 DEMO_FILE = ROOT / "data/fixtures/demo.json"
+DEFAULT_CACHE_FILE = ROOT / ".cache/astra/catalog_snapshot.json"
 VERSION = "0.1.0"
 logger = logging.getLogger(__name__)
 
 
-def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
+def create_app(
+    fixture_path: Path = DEMO_FILE,
+    cache_path: Path | None = None,
+    connector: CelesTrakConnector | None = None,
+) -> FastAPI:
+    resolved_cache = (
+        cache_path
+        if cache_path is not None
+        else (
+            DEFAULT_CACHE_FILE
+            if fixture_path == DEMO_FILE
+            else fixture_path.parent / "catalog_cache.json"
+        )
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
@@ -29,9 +48,23 @@ def create_app(fixture_path: Path = DEMO_FILE) -> FastAPI:
             app.state.demo = None
         if not hasattr(app.state, "runs"):
             app.state.runs = {}
+
+        repo = CatalogRepository(
+            cache_path=resolved_cache,
+            demo_path=fixture_path,
+            connector=connector,
+        )
+        try:
+            repo.load_startup()
+            app.state.catalog_repo = repo
+        except RuntimeError:
+            logger.warning("Catalog repository could not load cache or demo fixture")
+            app.state.catalog_repo = None
         yield
 
     api = FastAPI(title="ASTRA Orbital Collision Lab", version=VERSION, lifespan=lifespan)
+    api.include_router(catalog_routes.router)
+    api.include_router(object_routes.router)
 
     @api.get("/health", operation_id="getHealth")
     def health(request: Request) -> Health:

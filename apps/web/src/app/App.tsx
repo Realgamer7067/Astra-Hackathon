@@ -1,47 +1,101 @@
-import { lazy, Suspense, useEffect, useState } from "react";
 import {
-  type DemoBundle,
-  kindColors,
-  kindLabels,
-  loadDemo,
-  utcLabel,
-} from "./demo";
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import ReplayBar from "../timeline/ReplayBar";
+import { ReplayHandoffContext } from "../timeline/ReplayHandoffContext";
+import { CatalogExplorer } from "../features/catalog/CatalogExplorer";
+import {
+  type CatalogObject,
+  type CatalogStatus,
+  type RenderStates,
+  modeBadgeLabel,
+} from "../features/catalog/catalogApi";
 import { ResultsPanel } from "../features/results";
 import "../features/results/results.css";
+import { type DemoBundle, loadDemo, utcLabel } from "./demo";
+import {
+  type ReplaySessionOptions,
+  type ScenarioCompletionCallback,
+  useReplaySession,
+} from "./useReplaySession";
 
 const Globe = lazy(() => import("../globe/EarthView"));
 type LoadState =
   { status: "loading" | "error" } | { status: "ready"; demo: DemoBundle };
 
-export function App({
-  activeScenarioId,
-}: {
-  activeScenarioId?: string | null;
-}) {
+export function App(
+  props: {
+    activeScenarioId?: string | null;
+    replayOptions?: ReplaySessionOptions;
+    renderScenarioPanel?: (
+      onScenarioCompleted: ScenarioCompletionCallback,
+    ) => ReactNode;
+  } = {},
+) {
+  const [previewing, setPreviewing] = useState(false);
+  const [lowGraphics, setLowGraphics] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [completedScenarioId, setCompletedScenarioId] = useState<string | null>(
+  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus | null>(
     null,
   );
+  const [catalogObjects, setCatalogObjects] = useState<CatalogObject[]>([]);
+  const [renderStates, setRenderStates] = useState<RenderStates | null>(null);
   const demo = state.status === "ready" ? state.demo : undefined;
 
-  const urlScenarioId =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("scenario_id") ||
-        new URLSearchParams(window.location.search).get("scenarioId")
-      : null;
+  const handleCatalogStateChange = useCallback(
+    (payload: {
+      status: CatalogStatus | null;
+      objects: CatalogObject[];
+      renderStates: RenderStates | null;
+    }) => {
+      setCatalogStatus(payload.status);
+      setCatalogObjects(payload.objects);
+      setRenderStates(payload.renderStates);
+    },
+    [],
+  );
 
+  const onScenarioActivated = useCallback(() => {
+    setPreviewing(false);
+  }, []);
+
+  const replayOptions = useMemo<ReplaySessionOptions>(
+    () => ({
+      ...props.replayOptions,
+      onScenarioActivated: (run) => {
+        onScenarioActivated();
+        props.replayOptions?.onScenarioActivated?.(run);
+      },
+    }),
+    [props.replayOptions, onScenarioActivated],
+  );
+
+  const session = useReplaySession(
+    state.status,
+    demo,
+    previewing,
+    replayOptions,
+  );
+
+  const legacyScenarioId =
+    typeof window === "undefined"
+      ? null
+      : new URLSearchParams(window.location.search).get("scenarioId")?.trim() ||
+        null;
   const currentScenarioId =
-    activeScenarioId ??
-    completedScenarioId ??
-    urlScenarioId ??
+    props.activeScenarioId ??
+    session.completedScenarioId ??
+    legacyScenarioId ??
     demo?.result.scenario_id ??
     null;
-  const selected = demo?.objects.find((object) => object.id === selectedId);
-  const selectedState = demo?.states.states.find(
-    (sample) => sample.object_id === selectedId,
-  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -52,18 +106,6 @@ export function App({
       });
     return () => controller.abort();
   }, [attempt]);
-
-  useEffect(() => {
-    const onCompleted = (event: Event) => {
-      const { detail } = event as CustomEvent<{ scenarioId?: unknown }>;
-      if (typeof detail?.scenarioId !== "string") return;
-      const scenarioId = detail.scenarioId.trim();
-      if (scenarioId) setCompletedScenarioId(scenarioId);
-    };
-    window.addEventListener("astra:scenario-completed", onCompleted);
-    return () =>
-      window.removeEventListener("astra:scenario-completed", onCompleted);
-  }, []);
 
   function retry() {
     setState({ status: "loading" });
@@ -79,107 +121,71 @@ export function App({
         </div>
         <span className="product-name">Orbital Collision Lab</span>
         <span className="source-status" role="status">
-          {demo
-            ? "Synthetic demo"
+          {catalogStatus
+            ? modeBadgeLabel(catalogStatus.mode)
             : state.status === "error"
               ? "API unavailable"
               : "Connecting to API"}
         </span>
       </header>
-      <main className="console">
-        <section className="viewport" aria-labelledby="scene-title">
-          <Suspense
-            fallback={
-              <p className="globe-state" role="status">
-                Loading Earth…
+      <ReplayHandoffContext.Provider value={session.onScenarioCompleted}>
+        <main className="console">
+          <section className="viewport" aria-labelledby="scene-title">
+            <Suspense
+              fallback={
+                <p className="globe-state" role="status">
+                  Loading Earth…
+                </p>
+              }
+            >
+              <Globe
+                states={renderStates?.states}
+                objects={catalogObjects}
+                selectedId={selectedId}
+                replayPositions={
+                  session.replayable ? session.replay.positions : undefined
+                }
+                impact={session.impact}
+                focusToken={session.focusToken}
+                lowGraphics={lowGraphics}
+              />
+            </Suspense>
+            <div className="scene-label">
+              <h1 id="scene-title">Earth orbit</h1>
+              <p>
+                {renderStates
+                  ? `${utcLabel(renderStates.at_utc)} · visual sizes exaggerated`
+                  : "Awaiting orbital snapshot"}
               </p>
-            }
-          >
-            <Globe
-              states={demo?.states.states}
-              objects={demo?.objects}
-              selectedId={selectedId}
-            />
-          </Suspense>
-          <div className="scene-label">
-            <h1 id="scene-title">Earth orbit</h1>
-            <p>{demo ? utcLabel(demo.states.at_utc) : "Awaiting a snapshot"}</p>
-          </div>
-          <small className="credit">Natural Earth</small>
-        </section>
-        <aside className="catalog" aria-labelledby="catalog-title">
-          <div className="catalog-header">
-            <h2 id="catalog-title">Demo catalog</h2>
-            {demo && <span>{demo.catalog.records} objects</span>}
-          </div>
-          {state.status === "loading" && (
-            <p role="status">Loading the local snapshot…</p>
-          )}
-          {state.status === "error" && (
-            <div className="failure">
-              <p role="alert">
-                The local API is unavailable. Start the API and try again.
-              </p>
-              <button onClick={retry}>Retry</button>
             </div>
-          )}
-          {demo &&
-            (demo.objects.length ? (
-              <ul className="objects">
-                {demo.objects.map((object) => (
-                  <li key={object.id}>
-                    <button
-                      aria-pressed={selectedId === object.id}
-                      onClick={() =>
-                        setSelectedId((current) =>
-                          current === object.id ? null : object.id,
-                        )
-                      }
-                    >
-                      <span
-                        className="object-dot"
-                        style={{ backgroundColor: kindColors[object.kind] }}
-                      />
-                      <span>{object.name}</span>
-                      <span className="object-kind">
-                        {kindLabels[object.kind]}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No objects in this snapshot.</p>
-            ))}
-          <div className="object-detail" aria-live="polite">
-            <h3>{selected?.name ?? "Object details"}</h3>
-            {selected ? (
-              <dl>
-                <dt>Object ID</dt>
-                <dd>{selected.id}</dd>
-                <dt>Frame</dt>
-                <dd>{demo?.states.frame}</dd>
-                <dt>Position</dt>
-                <dd>
-                  {selectedState?.position
-                    .map((coordinate) => (coordinate / 1000).toFixed(1))
-                    .join(", ") ?? "Unavailable"}
-                  {selectedState && " km"}
-                </dd>
-              </dl>
-            ) : (
-              <p>Select an object to see its example position.</p>
-            )}
-          </div>
-          <ResultsPanel
-            key={currentScenarioId}
-            scenarioId={currentScenarioId}
-          />
-        </aside>
-      </main>
+            <ReplayBar
+              session={session}
+              previewing={previewing}
+              onPreviewChange={setPreviewing}
+              lowGraphics={lowGraphics}
+              onLowGraphicsChange={setLowGraphics}
+              onRetry={retry}
+            />
+            <small className="credit">Natural Earth</small>
+          </section>
+          <CatalogExplorer
+            selectedId={selectedId}
+            onSelectId={setSelectedId}
+            onCatalogStateChange={handleCatalogStateChange}
+          >
+            <ResultsPanel
+              key={currentScenarioId}
+              scenarioId={currentScenarioId}
+            />
+          </CatalogExplorer>
+        </main>
+        {props.renderScenarioPanel?.(session.onScenarioCompleted)}
+      </ReplayHandoffContext.Provider>
       <footer>
-        Educational simulation. This snapshot uses fictional objects and example
-        coordinates.
+        Educational research simulation. Catalog positions are estimates;
+        collision scenarios and impact trajectories are hypothetical unless
+        explicitly stated otherwise. Not for spacecraft operations or emergency
+        decisions.
       </footer>
     </div>
   );

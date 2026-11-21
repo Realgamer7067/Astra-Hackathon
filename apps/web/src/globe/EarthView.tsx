@@ -7,10 +7,12 @@ import {
   Credit,
   CreditDisplay,
   ImageryLayer,
+  PointPrimitive,
   PointPrimitiveCollection,
   TileMapServiceImageryProvider,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { burstCount, burstParticles } from "./effects";
 import {
   type CartesianState,
   type CatalogObject,
@@ -21,7 +23,24 @@ type Props = {
   states?: CartesianState[];
   objects?: CatalogObject[];
   selectedId: string | null;
+  /** Interpolated replay positions (ITRS metres). */
+  replayPositions?: Map<string, [number, number, number]>;
+  /** Impact site (ITRS metres) and time since impact; null age = not started. */
+  impact?: {
+    position: [number, number, number];
+    ageMs: number | null;
+    seed: number;
+  };
+  /** Increment to fly the camera to the impact site. */
+  focusToken?: number;
+  lowGraphics?: boolean;
 };
+
+import { renderScale, trackFps } from "./quality";
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function reset(widget: CesiumWidget) {
   widget.camera.setView({
@@ -30,7 +49,20 @@ function reset(widget: CesiumWidget) {
   widget.scene.requestRender();
 }
 
-export default function EarthView({ states, objects, selectedId }: Props) {
+export default function EarthView({
+  states,
+  objects,
+  selectedId,
+  replayPositions,
+  impact,
+  focusToken,
+  lowGraphics = false,
+}: Props) {
+  const fpsLabel = useRef<HTMLSpanElement>(null);
+  const burstCollection = useRef<PointPrimitiveCollection | null>(null);
+  const replayCollection = useRef<PointPrimitiveCollection | null>(null);
+  const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
+  const lastFocusToken = useRef(0);
   const host = useRef<HTMLDivElement>(null);
   const widget = useRef<CesiumWidget | null>(null);
   const points = useRef<PointPrimitiveCollection | null>(null);
@@ -47,6 +79,9 @@ export default function EarthView({ states, objects, selectedId }: Props) {
         skyBox: false,
         scene3DOnly: true,
         requestRenderMode: true,
+        // Render at device resolution (capped) instead of CSS pixels so the
+        // globe and markers are crisp on high-DPI displays.
+        useBrowserRecommendedResolution: false,
         showRenderLoopErrors: false,
       });
     } catch {
@@ -54,10 +89,19 @@ export default function EarthView({ states, objects, selectedId }: Props) {
       return;
     }
     widget.current = instance;
+    instance.resolutionScale = renderScale(false);
+    instance.scene.postProcessStages.fxaa.enabled = true;
+    const stopFps = trackFps(instance, fpsLabel.current);
     instance.scene.backgroundColor = Color.fromCssColorString("#090f17");
     if (instance.scene.globe)
       instance.scene.globe.baseColor = Color.fromCssColorString("#22455e");
     points.current = instance.scene.primitives.add(
+      new PointPrimitiveCollection(),
+    );
+    replayCollection.current = instance.scene.primitives.add(
+      new PointPrimitiveCollection(),
+    );
+    burstCollection.current = instance.scene.primitives.add(
       new PointPrimitiveCollection(),
     );
     reset(instance);
@@ -79,8 +123,12 @@ export default function EarthView({ states, objects, selectedId }: Props) {
           setWarning("Local imagery unavailable. Showing the Earth ellipsoid.");
       });
     return () => {
+      stopFps();
       removeError();
       points.current = null;
+      replayCollection.current = null;
+      burstCollection.current = null;
+      replayPoints.current.clear();
       widget.current = null;
       instance.destroy();
     };
@@ -125,6 +173,95 @@ export default function EarthView({ states, objects, selectedId }: Props) {
     instance.scene.requestRender();
   }, [states, selectedId]);
 
+  useEffect(() => {
+    const collection = replayCollection.current;
+    const live = replayPoints.current;
+    if (!collection) return;
+    for (const [id, point] of live) {
+      if (!replayPositions?.has(id)) {
+        collection.remove(point);
+        live.delete(id);
+      }
+    }
+    for (const [id, position] of replayPositions ?? []) {
+      const cartesian = Cartesian3.fromArray(position);
+      const existing = live.get(id);
+      if (existing) existing.position = cartesian;
+      else
+        live.set(
+          id,
+          collection.add({
+            position: cartesian,
+            color: Color.fromCssColorString("#ffb454"),
+            pixelSize: 8,
+            outlineColor: Color.WHITE,
+            outlineWidth: 1,
+          }),
+        );
+    }
+    widget.current?.scene.requestRender();
+  }, [replayPositions]);
+
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance) return;
+    instance.resolutionScale = renderScale(lowGraphics);
+    // FXAA already smooths edges; MSAA on top is redundant cost on low graphics.
+    instance.scene.msaaSamples = lowGraphics ? 1 : 4;
+    instance.scene.requestRender();
+  }, [lowGraphics]);
+
+  // Decorative burst: independent of physics; off under reduced motion.
+  useEffect(() => {
+    const collection = burstCollection.current;
+    if (!collection) return;
+    collection.removeAll();
+    const count = burstCount({
+      lowGraphics,
+      reducedMotion: prefersReducedMotion(),
+    });
+    if (impact && impact.ageMs !== null && count > 0) {
+      const origin = Cartesian3.fromArray(impact.position);
+      for (const p of burstParticles(impact.seed, impact.ageMs, count)) {
+        collection.add({
+          position: Cartesian3.add(
+            origin,
+            Cartesian3.fromArray(p.offset),
+            new Cartesian3(),
+          ),
+          color: Color.fromCssColorString("#ffb454").withAlpha(p.alpha),
+          pixelSize: 3,
+        });
+      }
+    }
+    widget.current?.scene.requestRender();
+  }, [impact, lowGraphics]);
+
+  // Impact camera: fly (or jump, under reduced motion) above the impact site.
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance || !available || !impact || !focusToken) return;
+    if (lastFocusToken.current === focusToken) return;
+    const origin = Cartesian3.fromArray(impact.position);
+    const radius = Cartesian3.magnitude(origin);
+    if (!(radius > 0)) return;
+    lastFocusToken.current = focusToken;
+    const direction = Cartesian3.normalize(origin, new Cartesian3());
+    const altitudeAboveSurface = Math.max(0, radius - 6_371_000);
+    const cameraRadius =
+      radius + Math.max(2_000_000, altitudeAboveSurface * 0.6);
+    instance.camera.flyTo({
+      destination: Cartesian3.multiplyByScalar(
+        direction,
+        cameraRadius,
+        new Cartesian3(),
+      ),
+      duration: prefersReducedMotion() ? 0 : 1.6,
+    });
+    instance.scene.requestRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusToken, available, impact]);
+
   function zoom(direction: "in" | "out") {
     const instance = widget.current;
     if (!instance) return;
@@ -149,6 +286,14 @@ export default function EarthView({ states, objects, selectedId }: Props) {
           {warning}
         </p>
       )}
+      <span
+        ref={fpsLabel}
+        className="fps-counter"
+        role="status"
+        aria-label="Rendering frame rate"
+      >
+        FPS idle
+      </span>
       {available && (
         <div
           className="camera-controls"
