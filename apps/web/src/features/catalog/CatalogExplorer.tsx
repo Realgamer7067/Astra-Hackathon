@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { kindColors, kindLabels, utcLabel } from "../../app/demo";
 import {
   type CartesianState,
@@ -9,9 +9,9 @@ import {
   type OperationalStatus,
   type RenderStates,
   fetchCatalogStatus,
-  fetchObjectDetail,
   fetchRenderStates,
   formatSourceAge,
+  loadSelectedObjectWithState,
   modeBadgeLabel,
   refreshCatalog,
   searchObjects,
@@ -36,6 +36,7 @@ const WARNING_LABELS: Record<string, string> = {
   DECAYED_OBJECTS_FILTERED: "Decayed objects excluded",
   DUPLICATE_EPOCH_CONFLICT: "Duplicate records resolved by newest epoch",
   SATCAT_UNAVAILABLE: "SATCAT metadata unavailable",
+  CACHE_PERSISTENCE_FAILED: "Could not write cache to disk (using memory)",
 };
 
 export function CatalogExplorer({
@@ -62,6 +63,14 @@ export function CatalogExplorer({
   const [error, setError] = useState<string | null>(null);
   const [refreshNote, setRefreshNote] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [batchVersion, setBatchVersion] = useState(0);
+
+  const renderStatesRef = useRef<RenderStates | null>(null);
+  renderStatesRef.current = renderStates;
+  const itemsRef = useRef<CatalogObject[]>([]);
+  itemsRef.current = items;
+  const statusRef = useRef<CatalogStatus | null>(null);
+  statusRef.current = status;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,6 +91,10 @@ export function CatalogExplorer({
         setTotal(page.total);
         setNextCursor(page.next_cursor);
         setRenderStates(states);
+        renderStatesRef.current = states;
+        itemsRef.current = page.items;
+        statusRef.current = catStatus;
+        setBatchVersion((v) => v + 1);
         onCatalogStateChange?.({
           status: catStatus,
           objects: page.items,
@@ -114,38 +127,29 @@ export function CatalogExplorer({
       return;
     }
     const controller = new AbortController();
-    const inVisibleBatch =
-      renderStates?.states.some((s) => s.object_id === selectedId) ?? false;
     setSelectedStateOverride(null);
 
-    Promise.all([
-      fetchObjectDetail(selectedId, controller.signal),
-      inVisibleBatch
-        ? Promise.resolve(null)
-        : fetchRenderStates(
-            { scope: "selected", ids: [selectedId], limit: 1 },
-            controller.signal,
-          ).catch(() => null),
-    ])
-      .then(([objDetail, selectedStates]) => {
+    loadSelectedObjectWithState({
+      selectedId,
+      currentBatch: renderStatesRef.current,
+      existingObjects: itemsRef.current,
+      signal: controller.signal,
+    })
+      .then((resolution) => {
         if (controller.signal.aborted) return;
-        setDetail(objDetail);
-        const fetchedState =
-          selectedStates?.states.find((s) => s.object_id === selectedId) ??
-          null;
-        setSelectedStateOverride(fetchedState);
-        if (fetchedState && renderStates) {
-          const mergedStates: RenderStates = {
-            ...renderStates,
-            states: [...renderStates.states, fetchedState],
-          };
-          const mergedObjects = items.some((o) => o.id === objDetail.object.id)
-            ? items
-            : [...items, objDetail.object];
+        setDetail(resolution.detail);
+        if (resolution.action === "reload_batch") {
+          setReloadNonce((n) => n + 1);
+          return;
+        }
+        if (resolution.action === "append") {
+          setSelectedStateOverride(resolution.state);
+          setRenderStates(resolution.mergedBatch);
+          renderStatesRef.current = resolution.mergedBatch;
           onCatalogStateChange?.({
-            status,
-            objects: mergedObjects,
-            renderStates: mergedStates,
+            status: statusRef.current,
+            objects: resolution.mergedObjects,
+            renderStates: resolution.mergedBatch,
           });
         }
       })
@@ -156,7 +160,7 @@ export function CatalogExplorer({
         }
       });
     return () => controller.abort();
-  }, [selectedId, renderStates]);
+  }, [selectedId, batchVersion]);
 
   async function handleLoadMore() {
     if (!nextCursor || loadingMore) return;

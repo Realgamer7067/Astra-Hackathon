@@ -118,3 +118,104 @@ export async function fetchRenderStates(
   const res = await fetch(`/api/v1/states?${qs.toString()}`, { signal });
   return readJsonOrThrow<RenderStates>(res, "Orbital states unavailable");
 }
+
+export type SelectedObjectResolution =
+  | {
+      action: "none";
+      detail: ObjectDetail | null;
+    }
+  | {
+      action: "append";
+      detail: ObjectDetail;
+      state: CartesianState;
+      mergedBatch: RenderStates;
+      mergedObjects: CatalogObject[];
+    }
+  | {
+      action: "reload_batch";
+      detail: ObjectDetail;
+    };
+
+export async function loadSelectedObjectWithState(params: {
+  selectedId: string;
+  currentBatch: RenderStates | null;
+  existingObjects: CatalogObject[];
+  signal?: AbortSignal;
+}): Promise<SelectedObjectResolution> {
+  const { selectedId, currentBatch, existingObjects, signal } = params;
+  const inVisibleBatch =
+    currentBatch?.states.some((s) => s.object_id === selectedId) ?? false;
+
+  const [objDetail, selectedStates] = await Promise.all([
+    fetchObjectDetail(selectedId, signal),
+    inVisibleBatch || !currentBatch
+      ? Promise.resolve(null)
+      : fetchRenderStates(
+          {
+            at: currentBatch.at_utc,
+            scope: "selected",
+            ids: [selectedId],
+            limit: 1,
+          },
+          signal,
+        ).catch(() => null),
+  ]);
+
+  const currentSnap = currentBatch?.provenance.catalogSnapshotId ?? null;
+  if (
+    currentBatch &&
+    currentSnap &&
+    objDetail.object.catalog_snapshot_id !== currentSnap
+  ) {
+    return { action: "reload_batch", detail: objDetail };
+  }
+
+  if (!currentBatch || inVisibleBatch || !selectedStates) {
+    return { action: "none", detail: objDetail };
+  }
+
+  const selectedSnap = selectedStates.provenance.catalogSnapshotId ?? null;
+  if (!currentSnap || !selectedSnap || selectedSnap !== currentSnap) {
+    return { action: "reload_batch", detail: objDetail };
+  }
+
+  const batchEpochMs = Date.parse(currentBatch.at_utc);
+  const selectedEpochMs = Date.parse(selectedStates.at_utc);
+  const sameEpoch =
+    !Number.isNaN(batchEpochMs) &&
+    !Number.isNaN(selectedEpochMs) &&
+    batchEpochMs === selectedEpochMs;
+  const sameFrame =
+    currentBatch.frame === selectedStates.frame &&
+    currentBatch.position_unit === selectedStates.position_unit &&
+    currentBatch.velocity_unit === selectedStates.velocity_unit;
+
+  if (!sameEpoch || !sameFrame) {
+    return { action: "none", detail: objDetail };
+  }
+
+  const fetchedState = selectedStates.states.find(
+    (s) => s.object_id === selectedId,
+  );
+  if (!fetchedState) {
+    return { action: "none", detail: objDetail };
+  }
+
+  const mergedBatch: RenderStates = {
+    ...currentBatch,
+    states: [...currentBatch.states, fetchedState],
+  };
+  const mergedObjects = existingObjects.some(
+    (o) => o.id === objDetail.object.id,
+  )
+    ? existingObjects
+    : [...existingObjects, objDetail.object];
+
+  return {
+    action: "append",
+    detail: objDetail,
+    state: fetchedState,
+    mergedBatch,
+    mergedObjects,
+  };
+}

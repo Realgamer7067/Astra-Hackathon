@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -32,6 +33,7 @@ from ..models.wire import (
 )
 
 STALE_AFTER_HOURS = 24.0
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -211,7 +213,7 @@ class CatalogRepository:
         raise RuntimeError("Neither cached catalog nor offline demo fixture is available")
 
     def _read_cache(self) -> CatalogSnapshot | None:
-        if not self.cache_path.exists():
+        if not self.cache_path.is_file():
             return None
         try:
             raw = json.loads(self.cache_path.read_text(encoding="utf-8"))
@@ -357,10 +359,35 @@ class CatalogRepository:
                 )
 
             self._backoff_until = None
-            self._write_cache(fetched)
             live_snap = build_snapshot_from_fetch(fetched, mode="LIVE")
+            persistence_failed = False
+            try:
+                self._write_cache(fetched)
+            except OSError as exc:
+                persistence_failed = True
+                logger.warning("Failed to persist catalog snapshot to %s: %s", self.cache_path, exc)
+                warnings_with_cache_err = list(live_snap.warning_codes)
+                if "CACHE_PERSISTENCE_FAILED" not in warnings_with_cache_err:
+                    warnings_with_cache_err.append("CACHE_PERSISTENCE_FAILED")
+                live_snap = CatalogSnapshot(
+                    catalog_snapshot_id=live_snap.catalog_snapshot_id,
+                    mode=live_snap.mode,
+                    sources=live_snap.sources,
+                    fetched_at=live_snap.fetched_at,
+                    objects=live_snap.objects,
+                    omm_by_id=live_snap.omm_by_id,
+                    satcat_by_id=live_snap.satcat_by_id,
+                    demo_states_by_id=live_snap.demo_states_by_id,
+                    demo_epoch_utc=live_snap.demo_epoch_utc,
+                    warning_codes=warnings_with_cache_err,
+                    decayed_filtered_count=live_snap.decayed_filtered_count,
+                )
+
             self._snapshot = live_snap
-            return live_snap, True, f"Fetched {len(live_snap.objects)} objects from CelesTrak."
+            msg = f"Fetched {len(live_snap.objects)} objects from CelesTrak."
+            if persistence_failed:
+                msg = f"Fetched {len(live_snap.objects)} objects from CelesTrak (cache persistence failed)."
+            return live_snap, True, msg
         finally:
             self._refresh_lock.release()
 

@@ -179,3 +179,64 @@ def test_retry_suppression_after_503_and_concurrent_refresh(tmp_path: Path) -> N
     assert ok2 is False
     assert "already in progress" in msg_concurrent.lower()
     assert results == [(True, "Fetched 2 objects from CelesTrak.")]
+
+
+def test_refresh_keeps_cooldown_and_serves_live_when_cache_write_fails(tmp_path: Path) -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        if "GROUP=ACTIVE" in str(request.url):
+            calls += 1
+            return httpx.Response(200, text=OMM_CSV)
+        return httpx.Response(200, text=SATCAT_CSV)
+
+    # Point cache_path to an existing directory so writing raises IsADirectoryError (OSError).
+    cache_dir = tmp_path / "cache_is_a_directory"
+    cache_dir.mkdir()
+
+    repo = CatalogRepository(
+        cache_path=cache_dir,
+        demo_path=FIXTURE,
+        connector=CelesTrakConnector(groups=("ACTIVE",), transport=httpx.MockTransport(handler)),
+    )
+    t0 = datetime(2026, 11, 21, 12, 0, tzinfo=UTC)
+    snap1, refreshed1, msg1 = repo.fetch_snapshot(now_utc=t0)
+    assert refreshed1 is True
+    assert snap1.mode == "LIVE"
+    assert len(snap1.objects) == 2
+    assert "CACHE_PERSISTENCE_FAILED" in snap1.warning_codes
+    assert "persistence failed" in msg1.lower()
+
+    # Live snapshot is still served in memory.
+    assert repo.snapshot.mode == "LIVE"
+    items, _, total = repo.search_objects()
+    assert total == 2
+    assert {item.id for item in items} == {"NORAD:123456", "NORAD:25544"}
+
+    # Immediate retry 1 second later must respect cooldown and make zero extra upstream calls.
+    snap2, refreshed2, _ = repo.fetch_snapshot(now_utc=t0 + timedelta(seconds=1))
+    assert refreshed2 is False
+    assert snap2.catalog_snapshot_id == snap1.catalog_snapshot_id
+    assert calls == 1
+
+
+def test_selected_state_at_explicit_older_epoch_matches_visible_batch_epoch(tmp_path: Path) -> None:
+    cache_file = tmp_path / "catalog_cache.json"
+    with TestClient(
+        create_app(FIXTURE, cache_path=cache_file, connector=_ok_connector())
+    ) as client:
+        assert client.post("/api/v1/catalog/refresh").json()["refreshed"] is True
+        batch_epoch = "2026-11-21T12:30:00Z"
+        visible = client.get(f"/api/v1/states?at={batch_epoch}&scope=visible&limit=1").json()
+        selected = client.get(
+            f"/api/v1/states?at={visible['at_utc']}&scope=selected&ids=NORAD:25544&limit=1"
+        ).json()
+        assert visible["at_utc"] == selected["at_utc"]
+        assert visible["frame"] == selected["frame"] == "ITRS"
+        assert (
+            visible["provenance"]["catalogSnapshotId"]
+            == selected["provenance"]["catalogSnapshotId"]
+        )
+        assert [s["object_id"] for s in visible["states"]] == ["NORAD:123456"]
+        assert [s["object_id"] for s in selected["states"]] == ["NORAD:25544"]

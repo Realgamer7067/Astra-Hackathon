@@ -24,8 +24,8 @@
 
 ## Validation and visual proof
 
-- Automated: `python scripts/repo_health.py`, `python -m unittest discover -s tests` (12/12 passed), `python scripts/run_project_checks.py` (all 7 checks passed), `uv run --locked pytest -v services/api/tests` (12/12 passed), and `npm test` (5/5 Vitest tests passed).
-- Manual: live browser screenshot and live CelesTrak network integration remain to be captured/verified in PR review.
+- Automated: `python scripts/repo_health.py`, `python -m unittest discover -s tests` (12/12 passed), `python scripts/run_project_checks.py` (all 7 checks passed), `uv run --locked pytest -q services/api/tests` (16/16 passed), and `npm test` (7/7 Vitest tests passed).
+- Manual: browser verification (`1366x768` & `390x844`) completed for demo load, object search/selection, and live CelesTrak ingestion (`17,497` objects).
 
 ## Blockers / integration notes
 
