@@ -803,3 +803,51 @@ class TestResultsAPI:
             assert len(rep["sections"]) > 0
             assert rep["sections"][0]["provenance"]["kind"] == "HYPOTHETICAL_SIMULATION"
             assert rep["sections"][0]["provenance"]["source"] == "ASTRA Collision Worker (TASK-003)"
+
+    @pytest.mark.parametrize("endpoint", ["results", "report"])
+    def test_unknown_id_does_not_resolve_raw_result(self, client, endpoint):
+        raw_result = client.get("/api/v1/demo").json()["result"]
+        raw_result["scenario_id"] = "known"
+        client.app.state.runs = {"known": raw_result}
+
+        assert client.get(f"/api/v1/scenarios/known/{endpoint}").status_code == 200
+        response = client.get(f"/api/v1/scenarios/unknown/{endpoint}")
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "SCENARIO_NOT_FOUND"
+
+    def test_worker_result_supplies_results_and_report(self, client):
+        bundle = client.get("/api/v1/demo").json()
+        request = ScenarioRequest.model_validate(bundle["scenario"])
+        result = ScenarioResult.model_validate(
+            {**bundle["result"], "scenario_id": "worker-run", "resolved_fragment_count": 30}
+        )
+
+        class WorkerSummary(ScenarioResult):
+            seed: int
+            scenario_type: str
+
+        class CompletedRun:
+            summary = WorkerSummary(
+                **result.model_dump(by_alias=True), seed=0, scenario_type="FORCED_HYPOTHETICAL"
+            )
+
+            def __init__(self, scenario):
+                self.request = scenario
+
+        class ScenarioJobs:
+            def result(self, scenario_id):
+                assert scenario_id == "worker-run"
+                return CompletedRun(request)
+
+        client.app.state.scenario_jobs = ScenarioJobs()
+        response = client.get("/api/v1/scenarios/worker-run/results")
+        assert response.status_code == 200
+        assert response.json()["resolved_fragment_count"] == 30
+        assert response.json()["provenance"] == bundle["result"]["provenance"]
+
+        report = client.get("/api/v1/scenarios/worker-run/report")
+        assert report.status_code == 200
+        assert report.json()["seed"] == 0
+        assert report.json()["sections"][0]["content"]["participants"] == [
+            participant.model_dump() for participant in request.participants
+        ]

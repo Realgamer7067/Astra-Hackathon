@@ -21,6 +21,9 @@ export function App({
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [completedScenarioId, setCompletedScenarioId] = useState<string | null>(
+    null,
+  );
   const demo = state.status === "ready" ? state.demo : undefined;
 
   const urlScenarioId =
@@ -30,7 +33,11 @@ export function App({
       : null;
 
   const currentScenarioId =
-    activeScenarioId ?? urlScenarioId ?? demo?.result.scenario_id ?? null;
+    activeScenarioId ??
+    completedScenarioId ??
+    urlScenarioId ??
+    demo?.result.scenario_id ??
+    null;
   const selected = demo?.objects.find((object) => object.id === selectedId);
   const selectedState = demo?.states.states.find(
     (sample) => sample.object_id === selectedId,
@@ -45,6 +52,18 @@ export function App({
       });
     return () => controller.abort();
   }, [attempt]);
+
+  useEffect(() => {
+    const onCompleted = (event: Event) => {
+      const { detail } = event as CustomEvent<{ scenarioId?: unknown }>;
+      if (typeof detail?.scenarioId !== "string") return;
+      const scenarioId = detail.scenarioId.trim();
+      if (scenarioId) setCompletedScenarioId(scenarioId);
+    };
+    window.addEventListener("astra:scenario-completed", onCompleted);
+    return () =>
+      window.removeEventListener("astra:scenario-completed", onCompleted);
+  }, []);
 
   function retry() {
     setState({ status: "loading" });
@@ -152,7 +171,10 @@ export function App({
               <p>Select an object to see its example position.</p>
             )}
           </div>
-          <ResultsPanel scenarioId={currentScenarioId} />
+          <ResultsPanel
+            key={currentScenarioId}
+            scenarioId={currentScenarioId}
+          />
         </aside>
       </main>
       <footer>

@@ -84,7 +84,6 @@ def _extract_scenario_data(entry: Any, scenario_id: str) -> ScenarioData | None:
             res_candidate = res_val
         elif "resolved_fragment_count" in entry or "occupancy" in entry:
             res_candidate = entry
-            matches_id = True
 
         scen_val = entry.get("scenario")
         if scen_val is not None:
@@ -141,8 +140,14 @@ def _extract_scenario_data(entry: Any, scenario_id: str) -> ScenarioData | None:
     if isinstance(res_candidate, ScenarioResult):
         final_result = res_candidate
     elif isinstance(res_candidate, dict):
-        final_result = ScenarioResult.model_validate(res_candidate)
+        try:
+            final_result = ScenarioResult.model_validate(res_candidate)
+        except ValidationError:
+            return None
     else:
+        return None
+
+    if final_result.scenario_id != scenario_id:
         return None
 
     # Validate scenario
@@ -206,16 +211,44 @@ def _extract_scenario_data(entry: Any, scenario_id: str) -> ScenarioData | None:
     )
 
 
+def _load_worker_result(request: Request, scenario_id: str) -> ScenarioData | None:
+    """Read the completed result via the collision worker's public lookup."""
+    worker = getattr(request.app.state, "scenario_jobs", None)
+    lookup = getattr(worker, "result", None)
+    if not callable(lookup):
+        return None
+
+    try:
+        completed = lookup(scenario_id)
+    except Exception as exc:
+        if getattr(exc, "code", None) in {"SCENARIO_NOT_FOUND", "RUN_INCOMPLETE"}:
+            return None
+        raise
+
+    summary = getattr(completed, "summary", None)
+    if not isinstance(summary, ScenarioResult):
+        return None
+    return _extract_scenario_data(
+        {
+            "result": summary,
+            "scenario": getattr(completed, "request", None),
+            "seed": getattr(summary, "seed", None),
+            "scenario_type": getattr(summary, "scenario_type", None),
+        },
+        scenario_id,
+    )
+
+
 def _get_scenario_data(request: Request, scenario_id: str) -> ScenarioData | None:
     """Retrieve result and scenario data by scenario_id.
 
-    Checks:
-      1. app.state.runs (dictionary or list of runs)
-      2. app.state.scenario_jobs (TASK-003 scenario jobs store)
-      3. app.state.jobs (job records store)
-      4. app.state.demo (offline demo fixture fallback)
+    Check the TASK-003 worker first, followed by legacy result stores and the demo.
     """
-    # 1. Search app.state.runs and app.state.scenario_jobs
+    worker_data = _load_worker_result(request, scenario_id)
+    if worker_data is not None:
+        return worker_data
+
+    # Search legacy dictionary and list stores.
     for store_name in ("runs", "scenario_jobs", "jobs"):
         store = getattr(request.app.state, store_name, None)
         if not store:
