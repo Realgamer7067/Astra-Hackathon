@@ -89,7 +89,17 @@ export function ScenarioLab({ demo }: { demo: DemoBundle }) {
     try {
       const initialJob = await startScenario(scenario, signal);
       const finished = await monitorJob(initialJob, signal, setJob);
+      if (signal.aborted) return;
       if (finished.state === "completed") {
+        window.dispatchEvent(
+          new CustomEvent("astra:scenario-completed", {
+            detail: {
+              scenarioId: finished.scenario_id,
+              seed: finished.seed,
+              impact: { atUtc: scenario.epoch_utc },
+            },
+          }),
+        );
         const [metrics, frames] = await Promise.all([
           loadSummary(finished.scenario_id, signal),
           loadFrames(finished.scenario_id, signal),

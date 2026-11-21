@@ -53,6 +53,7 @@ class CompletedRun:
     trajectory: Trajectory
     epoch: datetime
     output_step_s: int
+    request: ScenarioRequest
 
     def frame_page(self, indices: Sequence[int], offset: int, step_s: int) -> FramePage:
         count = self.summary.resolved_fragment_count
@@ -240,4 +241,4 @@ def simulate(
         entry_crossings=crossings,
         provenance=evidence,
     )
-    return CompletedRun(summary, trajectory, epoch, config.output_step_seconds)
+    return CompletedRun(summary, trajectory, epoch, config.output_step_seconds, scenario)

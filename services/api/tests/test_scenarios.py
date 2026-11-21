@@ -44,6 +44,9 @@ def test_synthetic_pair_computes_and_pages_trajectory(other: str):
         done = wait_for_job(client, job.json()["job_id"])
         assert done["state"] == "completed", done
         assert done["seed"] == 42
+        completed = client.app.state.scenario_jobs.result(scenario_id)
+        assert completed.request.participants[0].object_id == "DEMO:001"
+        assert completed.request.participants[1].object_id == other
         summary = client.get(f"{path}/simulation").json()
         assert summary["scenario_type"] == "FORCED_HYPOTHETICAL"
         assert summary["impact_energy_j"] > 0
