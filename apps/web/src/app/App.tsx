@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import TimelineControls from "../timeline/TimelineControls";
-import { syntheticFrames } from "../timeline/syntheticFrames";
+import { syntheticFrames, syntheticImpact } from "../timeline/syntheticFrames";
 import { useReplay } from "../timeline/useReplay";
 import {
   type DemoBundle,
@@ -20,6 +20,20 @@ export function App() {
   const [previewing, setPreviewing] = useState(false);
   const synthetic = useMemo(() => syntheticFrames(), []);
   const replay = useReplay(previewing ? synthetic : NO_FRAMES);
+  const [focusToken, setFocusToken] = useState(0);
+  const [lowGraphics, setLowGraphics] = useState(false);
+  const impactSite = useMemo(() => syntheticImpact(synthetic), [synthetic]);
+  const impact =
+    previewing && impactSite
+      ? {
+          position: impactSite.position,
+          seed: 20260101,
+          ageMs:
+            replay.clock.timeMs >= impactSite.timeMs
+              ? replay.clock.timeMs - impactSite.timeMs
+              : null,
+        }
+      : undefined;
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -73,6 +87,10 @@ export function App() {
               states={demo?.states.states}
               objects={demo?.objects}
               selectedId={selectedId}
+              replayPositions={previewing ? replay.positions : undefined}
+              impact={impact}
+              focusToken={focusToken}
+              lowGraphics={lowGraphics}
             />
           </Suspense>
           <div className="scene-label">
@@ -91,8 +109,24 @@ export function App() {
             {previewing && (
               <>
                 <p className="synthetic-badge" role="note">
-                  SYNTHETIC DEMO � illustrative motion, not a simulation result
+                  SYNTHETIC DEMO: illustrative motion, not a simulation result
                 </p>
+                <p className="effect-note">
+                  Impact flash is a decorative effect, not simulated debris.
+                </p>
+                <div className="timeline-buttons">
+                  <button onClick={() => setFocusToken((n) => n + 1)}>
+                    Fly to impact
+                  </button>
+                  <label className="preview-toggle">
+                    <input
+                      type="checkbox"
+                      checked={lowGraphics}
+                      onChange={(e) => setLowGraphics(e.target.checked)}
+                    />
+                    Low graphics
+                  </label>
+                </div>
                 <TimelineControls replay={replay} label="synthetic" />
               </>
             )}

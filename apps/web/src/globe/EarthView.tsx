@@ -12,6 +12,7 @@ import {
   TileMapServiceImageryProvider,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { burstCount, burstParticles } from "./effects";
 import {
   type CartesianState,
   type CatalogObject,
@@ -24,7 +25,20 @@ type Props = {
   selectedId: string | null;
   /** Interpolated replay positions (ITRS metres). */
   replayPositions?: Map<string, [number, number, number]>;
+  /** Impact site (ITRS metres) and time since impact; null age = not started. */
+  impact?: {
+    position: [number, number, number];
+    ageMs: number | null;
+    seed: number;
+  };
+  /** Increment to fly the camera to the impact site. */
+  focusToken?: number;
+  lowGraphics?: boolean;
 };
+
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function reset(widget: CesiumWidget) {
   widget.camera.setView({
@@ -38,7 +52,11 @@ export default function EarthView({
   objects,
   selectedId,
   replayPositions,
+  impact,
+  focusToken,
+  lowGraphics = false,
 }: Props) {
+  const burstCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayCollection = useRef<PointPrimitiveCollection | null>(null);
   const replayPoints = useRef<Map<string, PointPrimitive>>(new Map());
   const host = useRef<HTMLDivElement>(null);
@@ -92,6 +110,7 @@ export default function EarthView({
       removeError();
       points.current = null;
       replayCollection.current = null;
+      burstCollection.current = null;
       replayPoints.current.clear();
       widget.current = null;
       instance.destroy();
@@ -165,6 +184,51 @@ export default function EarthView({
     }
     widget.current?.scene.requestRender();
   }, [replayPositions]);
+
+  // Decorative burst: independent of physics; off under reduced motion.
+  useEffect(() => {
+    const collection = burstCollection.current;
+    if (!collection) return;
+    collection.removeAll();
+    const count = burstCount({
+      lowGraphics,
+      reducedMotion: prefersReducedMotion(),
+    });
+    if (impact && impact.ageMs !== null && count > 0) {
+      const origin = Cartesian3.fromArray(impact.position);
+      for (const p of burstParticles(impact.seed, impact.ageMs, count)) {
+        collection.add({
+          position: Cartesian3.add(
+            origin,
+            Cartesian3.fromArray(p.offset),
+            new Cartesian3(),
+          ),
+          color: Color.fromCssColorString("#ffb454").withAlpha(p.alpha),
+          pixelSize: 3,
+        });
+      }
+    }
+    widget.current?.scene.requestRender();
+  }, [impact, lowGraphics]);
+
+  // Impact camera: fly (or jump, under reduced motion) above the impact site.
+  useEffect(() => {
+    const instance = widget.current;
+    if (!instance || !impact || !focusToken) return;
+    const direction = Cartesian3.normalize(
+      Cartesian3.fromArray(impact.position),
+      new Cartesian3(),
+    );
+    instance.camera.flyTo({
+      destination: Cartesian3.multiplyByScalar(
+        direction,
+        6_371_000 + 2_500_000,
+        new Cartesian3(),
+      ),
+      duration: prefersReducedMotion() ? 0 : 1.6,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusToken]);
 
   function zoom(direction: "in" | "out") {
     const instance = widget.current;

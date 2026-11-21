@@ -274,3 +274,4 @@ footer {
 .timeline input[type="range"] { width: 100%; }
 .timeline output { color: #c8d2e0; font-size: .8rem; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+.effect-note { margin: 0; color: #8fa3b8; font-size: .75rem; }
